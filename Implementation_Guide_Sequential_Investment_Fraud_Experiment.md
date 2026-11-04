@@ -1,5 +1,7 @@
 ﻿# Finalized Research and Implementation Pipeline
 
+> **Change log (2026-11-04):** Reframed fee outcomes and power; made the fee tunable with a derived reinvestment cap; expanded pool simulation and pilot criteria; clarified reward salience, withdrawal staging, cap rationale, architecture, and reconciliation with the approach paper.
+
 **Study:** Behavioral Sequences in App-Based Investment Frauds  
 **Basis:** Team 5 approach paper, original design notes, and the proposed protocol decision sheet  
 **Protocol status:** Core design and accounting rules selected; pool distribution, incentive administration, and deception remain subject to simulation, pilot, and instructor/institutional approval.
@@ -29,7 +31,7 @@ At the start, `C = ₹1,000` and `P = ₹0`. The fixed ₹100 commitment transfe
 - Let `g = 0` in the 0% condition and `g = 0.35` in the 35% condition.
 - After the displayed initial return: `P = ₹100 × (1 + g)`, so the platform shows ₹100 or ₹135. Cash remains ₹900.
 
-Use equivalent wording and screen layout in both reward arms; change only the return and resulting value. Explain in the debrief that the apparent ₹35 gain was simulated. It increases displayed virtual wealth, so the reward manipulation combines positive feedback with a wealth change; acknowledge this in the report.
+Show the platform balance prominently (for example, ?135) with identical placement, size, and layout in both reward arms; change only the return and resulting value. Add a post-task reward-noticed check. Explain in the debrief that the apparent ₹35 gain was simulated. It increases displayed virtual wealth, so the reward manipulation combines positive feedback with a wealth change; acknowledge this in the report.
 
 ### 2.2 Reinvestment and pool outcome
 
@@ -70,7 +72,7 @@ Explain the ₹1,000 endowment and fixed ₹100 commitment clearly. State that t
 
 ## 3. Growth Pool decision: candidate, not yet frozen
 
-Use the following distribution as the **candidate for payoff simulation and pilot only**:
+Compare at least three candidate distributions in the simulator, targeting expected returns `E[r]` of about 0%, +5%, and +15%. The distribution below can serve as the +15% candidate for payoff simulation and pilot only:
 
 | Pool outcome | Return | Probability |
 |---|---:|---:|
@@ -78,7 +80,7 @@ Use the following distribution as the **candidate for payoff simulation and pilo
 | Moderate gain | +20% | 50% |
 | High gain | +50% | 25% |
 
-Its expected return is +15%. Do not call it the final or scientifically optimal distribution until the simulator and pilot have been reviewed. The older 50% chance of +40% and 50% chance of −30% is not the selected candidate.
+Its expected return is +15%. Do not call it final until all candidates and the pilot have been reviewed. Select using low pile-up at `R=0` and the cap, enough variance in `R`, and an adequate share in net-loss territory (`P < F`). If `E[r] > 0`, interpret `R` as commitment/risk-taking, not irrational escalation. The older 50% chance of +40% and 50% chance of −30% is not the selected candidate.
 
 For the research question, the proposed participant disclosure is that the value of reinvested funds may increase or decrease and the resulting value will appear at withdrawal, without stating exact odds. This is limited disclosure and requires approval. Do not tell participants that initial reward predicts pool outcomes; in fact, it does not. Debrief that the pool was controlled and random, its outcome did not depend on initial reward, and the interface elements were simulated. If the instructor requires disclosure of exact odds, use the approved disclosed-risk version and update the interpretation/preregistration before data collection.
 
@@ -86,7 +88,7 @@ For outcome allocation, generate a sufficiently long sequence before recruitment
 
 ### Required payoff simulation
 
-Before building production screens, enumerate both reward levels, all 15 reinvestment amounts, all three outcomes, both fee choices, and every resulting final balance. Verify examples independently by hand. Calculate:
+Before building production screens, enumerate both reward levels, all allowed reinvestment amounts for each configured `F`, all outcomes in at least three candidate distributions, both fee choices, and every resulting final balance. Verify examples independently by hand. Calculate:
 
 - Expected final balance and variance by reinvestment amount and condition.
 - Frequency with which paying is financially better, worse, or indifferent.
@@ -117,9 +119,9 @@ Participant-facing explanation should say that final virtual balance determines 
 9. **Stage 4:** choose `R` from ₹0 to ₹700 in ₹50 increments. Record first render, changes, final choice, and latency definition.
 10. **Stage 5:** resolve and store the Growth Pool outcome; display outcome and updated platform balance.
 11. **Stage 6:** display the ₹200 withdrawal processing fee.
-12. **Stage 7:** choose pay or abandon. Compute final balance from the frozen ledger. After choice, ask any planned fee-comprehension check; it must not alter the choice.
-13. **Post-task:** trust/legitimacy/risk/confidence ratings; UI manipulation checks; attention and suspicion checks; financial literacy and DOSPERT financial items.
-14. **Debrief and exit:** explain simulated rewards, pool, interface cues, fee, and purpose; provide contacts and withdrawal process.
+13. **Stage 8:** choose pay or abandon. Compute final balance from the frozen ledger. After choice, ask any planned fee-comprehension check; it must not alter the choice.
+14. **Post-task:** include reward-noticed check; trust/legitimacy/risk/confidence ratings; UI manipulation checks; attention and suspicion checks; financial literacy and DOSPERT financial items.
+15. **Debrief and exit:** explain that the reinvestment cap guarantees fee affordability, along with simulated rewards, pool, interface cues, fee, and purpose; explain simulated rewards, pool, interface cues, fee, and purpose; provide contacts and withdrawal process.
 
 Keep the exact validated instrument wording/scoring for financial literacy and DOSPERT. The decision sheet proposes Lusardi–Mitchell Big Three and validated DOSPERT financial investment/gambling items, but confirm the appropriate version, wording, and permissions before freezing the questionnaire. Use 1–7 ratings for perceived trustworthiness, legitimacy, risk, and confidence as proposed; describe these as secondary self-reports, not direct measures of mechanisms. Ask suspicion questions after behavior. Do not automatically exclude everyone who guesses the study purpose; retain the randomized primary analysis and report any pre-specified sensitivity analysis.
 
@@ -145,9 +147,9 @@ where `G=1` for 35%, `U=1` for manipulative UI. Use OLS with HC3 robust standard
 
 A target of 128 completed participants (32 per cell), with about 140 recruited to allow for attrition, is only a planning starting point. Before fixing N, simulate power for H1 (reward), H3 (UI), H4 (interaction), and the binary fee outcome using defensible assumptions. If capacity remains near 128, make H1 and H3 the confirmatory tests for the primary outcome; report H4 as a preregistered, estimation-focused interaction with confidence interval and cautious interpretation unless simulation justifies confirmatory status. Apply Holm correction across the confirmatory family actually specified. Keep H5 moderation exploratory. Do not claim 128 guarantees power for a medium interaction.
 
-### Secondary fee outcome
+### Secondary fee outcomes
 
-Fit logistic regression with reward, UI, and their interaction; report predicted probabilities and average marginal effects. Tabulate net-loss payments, forgone-gain abandonments, and indifference cases. H2 (balance association) is exploratory and non-causal because balance determines the relative financial value of paying. Report a ceiling/floor if choices are nearly universal rather than forcing elaborate claims.
+The main fee-decision outcome is net-loss payment (`paid AND P < F`), analyzed on the full randomized sample. Never restrict this analysis to a `P < F` subset, because `P` follows treatment and reinvestment. Simulate power for this binary outcome; if underpowered, label its analysis descriptive. Fit logistic regression with reward, UI, and their interaction; report predicted probabilities and average marginal effects. The companion fee-decision error outcome is net-loss payment OR forgone-gain abandonment (`abandoned AND P > F`). Tabulate both categories and indifference cases. H2 is reframed as the fee-decision hypothesis; the balance-vs-payment association remains exploratory and non-causal because balance determines the relative financial value of paying. Report a ceiling/floor if choices are nearly universal rather than forcing elaborate claims.
 
 Trust, perceived risk, latency, literacy, and DOSPERT are secondary. Do not add exploratory interactions after seeing results or call questionnaire associations causal. Specify missing data, exclusions, incomplete sessions, and multiplicity in the preregistration.
 
@@ -157,7 +159,7 @@ Provisional plan: recruit about 140 for 128 eligible completions. Set a target a
 
 ## 8. Application architecture and data integrity
 
-Recommended single stack: FastAPI + Jinja2 + JavaScript + persistent SQLite, or Postgres if the host cannot guarantee persistent SQLite storage. oTree is a reasonable alternative; choose one framework, not both.
+Recommend oTree. FastAPI + Jinja2 + JavaScript + persistent SQLite (or Postgres) is the alternative. Keep ledger, pool, and lottery logic in plain, unit-tested Python modules. Store lottery contact data separately from behavioral data.
 
 Suggested project modules:
 
@@ -233,17 +235,25 @@ Proceed only when:
 - Ledger, final balance, and lottery-weight examples match code exactly.
 - Reinvestment is not overwhelmingly concentrated at ₹0 or ₹700 (or this is explicitly accepted and justified).
 - Fee choice is not nearly universal in one direction (or the limitation is explicitly accepted).
+- The share in net-loss territory meets a pilot threshold, initially about 15?20% and adjustable before the main study.
+- Simulated `E[r]` is close to the candidate target and pile-up at `R=0` and the cap is acceptable.
 - Reward and UI manipulations are noticed without social proof leaking reward assignment.
 - Timer expiry is non-binding and does not affect payoffs.
 - No refresh, retry, or duplicate submission can reassign or reroll.
 - Task duration, technical completion, and debrief are acceptable.
 - Ethics/instructor approvals and final preregistration are in place.
 
-## 11. Limitations for the paper
+## 11. Reconciliation with approach paper
+
+- Growth Pool added to the task.
+- H2 reframed around fee decisions; fee decision is a secondary outcome.
+- Removed ?controlling for initial commitment? because it is fixed at ?100.
+
+## 12. Limitations for the paper
 
 State that virtual balances are not real investment losses; the 35% condition changes apparent wealth as well as reward feedback; the Growth Pool is a simplified simulation; fee choice is mechanically related to balance; the UI components are bundled; a convenience/student sample may not generalize to actual victims; no neural activity is measured; and one reinvestment decision does not establish a repeated learning trajectory.
 
-## 12. Decision register
+## 13. Decision register
 
 | Decision | Selected approach | Status |
 |---|---|---|
@@ -264,5 +274,5 @@ State that virtual balances are not real investment losses; the 35% condition ch
 | Confirmatory tests | H1 and H3 at N≈128; H4 confirmatory only if power supports | Preregister after simulation |
 | H5 | Exploratory moderation | Freeze |
 | UI bundle | Timer + social proof + salient status/progress | Freeze; one manipulation |
-| Framework | FastAPI/Jinja2/JS + persistent DB | Recommended |
+| Framework | oTree; FastAPI alternative | Recommended |
 | Target sample | 128 complete / about 140 recruited | Provisional; power and capacity review |
