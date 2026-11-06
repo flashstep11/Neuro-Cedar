@@ -1,0 +1,63 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+S2Commitment.html — Stage 2: Fixed Rs 100 committed to platform.
+Cue matrix: Manipulative → banner + tier card + ticker.
+{% endcomment %}
+
+{% block title %}Initial Investment{% endblock %}
+
+{% block pre_content %}
+{% if is_manipulative %}
+  {% include "cedarline/_urgency_banner.html" %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="cl-progress__label">Investment Stage 2 of 8</div>
+<div class="cl-progress" role="progressbar" aria-valuenow="2" aria-valuemax="8">
+  {% for i in "1" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
+  <div class="cl-progress__step cl-progress__step--active"></div>
+  {% for i in "345678" %}<div class="cl-progress__step"></div>{% endfor %}
+</div>
+
+{% if is_manipulative %}
+  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+{% endif %}
+
+<div class="cl-card cl-card--accent">
+  <h2>Initial Investment</h2>
+  <p>
+    Rs <strong>{{ commit }}</strong> has been committed from your account
+    to the {{ platform_name }} investment platform.
+  </p>
+</div>
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+    <div class="cl-balance-card__sub">After commitment</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs {{ platform_balance }}</div>
+    <div class="cl-balance-card__sub">On platform</div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <p>
+    Your Rs {{ commit }} is now on the {{ platform_name }} platform.
+    The platform will apply a return to this amount.
+  </p>
+  <p class="cl-muted">Your remaining cash: Rs {{ cash_balance }}</p>
+
+  <form method="post" class="cl-mt-2">
+    {% csrf_token %}
+    <button type="submit" class="cl-btn cl-btn--primary">
+      See Your Return →
+    </button>
+  </form>
+</div>
+{% endblock %}
+

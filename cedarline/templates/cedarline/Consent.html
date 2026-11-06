@@ -1,0 +1,136 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+Consent.html — Step 3: Informed consent.
+Two Yes/No questions (18+; agree to participate).
+Withdrawal code = participant.code.
+Does NOT reveal: fee amount, odds, or hypotheses.
+{% endcomment %}
+
+{% block title %}Consent{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Informed Consent</h1>
+
+  <p>
+    Please read the following information before proceeding.
+  </p>
+
+  <div class="cl-info-box">
+    <ul>
+      <li>Participation is <strong>entirely voluntary</strong>. You may
+          withdraw at any time without penalty.</li>
+      <li>All balances in this study are <strong>virtual</strong>. No money
+          will be deposited or transferred.</li>
+      <li>This study uses a <strong>simulated investment platform</strong>.
+          <strong>Deceptive or persuasive interface elements may be used,
+          and some choices can reduce lottery entries.</strong></li>
+      <li>Your responses will be kept confidential and used only for
+          academic research.</li>
+    </ul>
+  </div>
+
+  <div class="cl-info-box cl-info-box--warn">
+    <p>
+      <strong>Study deadline:</strong>
+      [VERIFY: insert study deadline here]
+    </p>
+    <p>
+      <strong>Contact:</strong>
+      [VERIFY: insert researcher contact email here]
+    </p>
+  </div>
+
+  <hr class="cl-divider">
+
+  <p>
+    <strong>By answering Yes to both questions below, you confirm you are
+    at least 18 and agree to participate voluntarily.</strong>
+  </p>
+
+  <form method="post" id="consent-form">
+    {% csrf_token %}
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        1. Are you at least 18 years old?
+      </label>
+      <ul class="cl-radio-group">
+        <li>
+          <label>
+            <input type="radio" name="q_18" value="yes" required>
+            Yes
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_18" value="no">
+            No
+          </label>
+        </li>
+      </ul>
+    </div>
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        2. Do you agree to participate in this study voluntarily?
+      </label>
+      <ul class="cl-radio-group">
+        <li>
+          <label>
+            <input type="radio" name="q_agree" value="yes" required>
+            Yes
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_agree" value="no">
+            No
+          </label>
+        </li>
+      </ul>
+    </div>
+
+    <div id="consent-error" class="cl-alert cl-alert--danger" style="display:none" role="alert">
+      You must answer Yes to both questions to continue.
+      If you do not wish to participate, you may close this page at any time.
+    </div>
+
+    <div class="cl-mt-2">
+      <button type="submit" class="cl-btn cl-btn--primary"
+              id="consent-submit">Proceed</button>
+    </div>
+  </form>
+
+  <hr class="cl-divider">
+
+  <div class="cl-info-box">
+    <p class="cl-muted">
+      <strong>Withdrawal code</strong> (save this if you wish to withdraw
+      your data later):
+    </p>
+    <p><span class="cl-token">{{ withdrawal_code }}</span></p>
+    <p class="cl-muted">
+      Deadline to request withdrawal: [VERIFY: insert date]
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('consent-form').addEventListener('submit', function(e) {
+  var q18    = document.querySelector('[name="q_18"]:checked');
+  var qAgree = document.querySelector('[name="q_agree"]:checked');
+  var err    = document.getElementById('consent-error');
+
+  if (!q18 || !qAgree || q18.value !== 'yes' || qAgree.value !== 'yes') {
+    e.preventDefault();
+    err.style.display = 'block';
+  } else {
+    err.style.display = 'none';
+  }
+});
+</script>
+{% endblock %}
+

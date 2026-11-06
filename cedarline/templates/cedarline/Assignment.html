@@ -1,0 +1,30 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+Assignment.html — Brief transition page while assignment is processed.
+Concealed: shows only a loading message.
+{% endcomment %}
+
+{% block title %}Setting Up…{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-text-center">
+  <div style="font-size:2.5rem;margin-bottom:1rem;" aria-hidden="true">⏳</div>
+  <h1>Setting Up Your Session</h1>
+  <p>Please wait a moment while we prepare your personalised session.</p>
+  <p class="cl-muted">This will only take a second.</p>
+
+  <form method="post" id="auto-submit">
+    {% csrf_token %}
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-advance after a short delay (conceals assignment)
+  setTimeout(function() {
+    document.getElementById('auto-submit').submit();
+  }, 1200);
+</script>
+{% endblock %}
+

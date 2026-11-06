@@ -1,0 +1,124 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+LotteryContact.html — Lottery contact form.
+Data sent via live_method and stored in lottery_contacts.sqlite3.
+No PII in oTree Player fields.
+{% endcomment %}
+
+{% block title %}Lottery Entry{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Lottery Entry</h1>
+
+  <p>
+    You have been entered into the prize draw for
+    <strong>{{ prize_count }} × Rs {{ prize_value }} gift vouchers</strong>.
+  </p>
+
+  <div class="cl-info-box">
+    <p>
+      <strong>Your claim token:</strong><br>
+      <span class="cl-token">{{ claim_token }}</span>
+    </p>
+    <p class="cl-muted cl-mt-1">
+      Save this token. It will be used to verify your prize if you win.
+    </p>
+  </div>
+</div>
+
+<div class="cl-card">
+  <h2>Contact Details <span class="cl-muted" style="font-weight:400;">(optional)</span></h2>
+  <p>
+    If you would like to be contacted if you win, please provide your contact
+    details below. This information is stored separately and will
+    <strong>never</strong> appear in the study data.
+  </p>
+
+  <div id="contact-form-wrap">
+    <div class="cl-form-group">
+      <label class="cl-label" for="contact-name">Name</label>
+      <input class="cl-input" type="text" id="contact-name"
+             name="name" maxlength="200" autocomplete="name"
+             placeholder="Your name">
+    </div>
+    <div class="cl-form-group">
+      <label class="cl-label" for="contact-email">Email</label>
+      <input class="cl-input" type="email" id="contact-email"
+             name="email" maxlength="200" autocomplete="email"
+             placeholder="your@email.com">
+    </div>
+    <div class="cl-form-group">
+      <label class="cl-label" for="contact-phone">Phone (optional)</label>
+      <input class="cl-input" type="tel" id="contact-phone"
+             name="phone" maxlength="20" autocomplete="tel"
+             placeholder="+91 …">
+    </div>
+
+    <div id="contact-msg" style="display:none" class="cl-alert" role="alert"></div>
+
+    <div class="cl-mt-2" style="display:flex;gap:.75rem;flex-wrap:wrap;">
+      <button type="button" class="cl-btn cl-btn--primary" style="flex:1"
+              id="contact-save-btn">
+        Save Contact Details
+      </button>
+      <button type="button" class="cl-btn cl-btn--outline" style="flex:1"
+              id="contact-skip-btn">
+        Skip (I'll Use My Claim Token)
+      </button>
+    </div>
+  </div>
+</div>
+
+{# Hidden oTree next-page form #}
+<form method="post" id="otree-next" style="display:none">
+  {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  var wsUrl = wsScheme + '://' + window.location.host + '/live/{{ player.id_in_group }}/{{ player.subsession.session.code }}/';
+  var ws;
+  try { ws = new WebSocket(wsUrl); } catch(e) {}
+
+  if (ws) {
+    ws.onmessage = function(e) {
+      var data = JSON.parse(e.data);
+      var payload = data[{{ player.id_in_group }}] || data;
+      if (payload.status === 'saved') {
+        var msg = document.getElementById('contact-msg');
+        msg.style.display = 'block';
+        msg.className = 'cl-alert cl-alert--success';
+        msg.textContent = 'Contact details saved. Proceeding…';
+        setTimeout(function() {
+          document.getElementById('otree-next').submit();
+        }, 900);
+      }
+    };
+  }
+
+  document.getElementById('contact-save-btn').addEventListener('click', function() {
+    var payload = {
+      action: 'submit_contact',
+      name:   document.getElementById('contact-name').value,
+      email:  document.getElementById('contact-email').value,
+      phone:  document.getElementById('contact-phone').value,
+    };
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(payload));
+    } else {
+      // Fallback: just advance
+      document.getElementById('otree-next').submit();
+    }
+  });
+
+  document.getElementById('contact-skip-btn').addEventListener('click', function() {
+    document.getElementById('otree-next').submit();
+  });
+})();
+</script>
+{% endblock %}
+

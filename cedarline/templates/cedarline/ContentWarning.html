@@ -1,0 +1,62 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+ContentWarning.html — Step 1: Content warning.
+Pre-assignment: neutral styling for everyone.
+No-penalty exit button records exit_code.
+{% endcomment %}
+
+{% block title %}Content Warning{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Before You Begin</h1>
+
+  <div class="cl-alert cl-alert--warn" role="alert">
+    <strong>Content Notice:</strong> This study simulates investment-fraud
+    tactics that are used in real app-based scams. Some elements are designed
+    to feel pressuring or persuasive. Past victims of financial fraud may find
+    this distressing.
+  </div>
+
+  <p>
+    You are <strong>not</strong> depositing real money. All balances in this
+    study are virtual. No funds will be transferred.
+  </p>
+
+  <p>
+    Participation is <strong>completely voluntary</strong>. You may exit at any
+    time without penalty, and your responses will not be recorded if you leave.
+  </p>
+
+  <hr class="cl-divider">
+
+  <p class="cl-muted">
+    If you would like to continue, click <strong>"I Understand, Continue"</strong>
+    below. If this content may distress you, you can leave this page now.
+  </p>
+
+  <div class="cl-mt-2">
+    {# oTree next-page form — if the participant advances, they agreed #}
+    <form method="post">
+      {% csrf_token %}
+      {# Hidden field: exit_code stays blank if they click Continue #}
+      <input type="hidden" name="exit_code" value="">
+      <button type="submit" class="cl-btn cl-btn--primary">
+        I Understand, Continue
+      </button>
+    </form>
+  </div>
+
+  <div class="cl-mt-2">
+    {# No-penalty exit — sets exit_code and submits #}
+    <form method="post" id="exit-form">
+      {% csrf_token %}
+      <input type="hidden" name="exit_code" value="left_at_content_warning">
+      <button type="submit" class="cl-btn cl-btn--outline" style="color:var(--color-text-muted);border-color:var(--color-border);">
+        Exit Study (No Penalty)
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+

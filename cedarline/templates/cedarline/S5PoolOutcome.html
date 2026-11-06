@@ -1,0 +1,77 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+S5PoolOutcome.html — Stage 5: Show pool outcome on the reinvestment.
+Pool assigned AFTER R submitted; never re-rolled on refresh.
+Cue matrix: Manipulative → banner + tier card + ticker.
+{% endcomment %}
+
+{% block title %}Platform Update{% endblock %}
+
+{% block pre_content %}
+{% if is_manipulative %}
+  {% include "cedarline/_urgency_banner.html" %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="cl-progress__label">Investment Stage 5 of 8</div>
+<div class="cl-progress" role="progressbar" aria-valuenow="5" aria-valuemax="8">
+  {% for i in "1234" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
+  <div class="cl-progress__step cl-progress__step--active"></div>
+  {% for i in "678" %}<div class="cl-progress__step"></div>{% endfor %}
+</div>
+
+{% if is_manipulative %}
+  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+{% endif %}
+
+<div class="cl-card cl-card--accent">
+  <h2>Platform Update</h2>
+  <p>
+    {{ platform_name }} has applied the pool return to your reinvestment.
+  </p>
+</div>
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+    <div class="cl-balance-card__sub">Unchanged</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount cl-balance-card__amount--large">
+      Rs {{ platform_balance }}
+    </div>
+    <div class="cl-balance-card__sub">
+      {% if pool_return_pct is not None %}
+        {% if pool_return_pct >= 0 %}+{% endif %}{{ pool_return_pct }}% on reinvestment
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <p>
+    You reinvested <strong>Rs {{ reinvest_amount }}</strong>.
+    The platform applied
+    <strong>{% if pool_return_pct is not None %}{% if pool_return_pct >= 0 %}+{% endif %}{{ pool_return_pct }}%{% endif %}</strong>
+    to that amount.
+  </p>
+  <p>
+    Your total platform balance is now
+    <strong>Rs {{ platform_balance }}</strong>.
+  </p>
+  <p>
+    You may now initiate a withdrawal of your funds.
+  </p>
+
+  <form method="post" class="cl-mt-2">
+    {% csrf_token %}
+    <button type="submit" class="cl-btn cl-btn--primary">
+      Withdraw My Funds →
+    </button>
+  </form>
+</div>
+{% endblock %}
+

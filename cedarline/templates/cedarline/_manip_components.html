@@ -1,0 +1,97 @@
+{% comment %}
+_manip_components.html — Reusable manipulative-arm components.
+Include with: {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+
+Variables expected:
+  show_tier   — True to show tier card
+  show_ticker — True to show activity ticker
+
+The urgency banner is injected by the investment stage pages into {% block pre_content %}.
+This partial handles tier card + ticker only.
+{% endcomment %}
+
+{% if show_tier %}
+{# --- Tier card: Silver → Gold progress. Same in both reward arms. --- #}
+<div class="cl-tier-card" role="complementary" aria-label="Your tier status">
+  <div class="cl-tier-card__badge" aria-hidden="true">🥈</div>
+  <div class="cl-tier-card__info">
+    <div class="cl-tier-card__name">Silver Tier</div>
+    <div class="cl-tier-card__sub">72% to Gold</div>
+    <div class="cl-tier-card__bar-wrap">
+      <div class="cl-tier-card__bar" role="progressbar"
+           aria-valuenow="72" aria-valuemin="0" aria-valuemax="100"
+           style="width:72%"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if show_ticker %}
+{# --- Activity ticker / social proof --- #}
+<div class="cl-ticker" aria-live="polite" aria-label="Recent platform activity">
+  <div class="cl-ticker__msg cl-ticker__toast" id="cl-ticker-msg">
+    Aarav K. just reinvested
+  </div>
+  <div class="cl-ticker__counter" id="cl-ticker-counter">
+    1,284 investors active now
+  </div>
+</div>
+
+<script>
+(function() {
+  // Message pool — fictional names, no returns, profits, percentages, or 35%
+  const MESSAGES = [
+    "Aarav K. just reinvested",
+    "Meera S. upgraded to Silver",
+    "Riya P. joined Cedarline",
+    "Vikram T. completed a withdrawal",
+    "Ananya G. started investing",
+    "Kabir M. renewed their account",
+    "Priya L. joined the platform",
+    "Rohan D. reinvested today",
+    "Sneha R. is now active",
+    "Arjun B. verified their account",
+  ];
+
+  let msgIdx = Math.floor(Math.random() * MESSAGES.length);
+  let counter = 1284;
+
+  function nextMessage() {
+    msgIdx = (msgIdx + 1) % MESSAGES.length;
+    const el = document.getElementById('cl-ticker-msg');
+    if (!el) return;
+    el.classList.remove('cl-ticker__toast');
+    // Force reflow to restart animation
+    void el.offsetWidth;
+    el.textContent = MESSAGES[msgIdx];
+    el.classList.add('cl-ticker__toast');
+  }
+
+  function driftCounter() {
+    // Slight drift ±2
+    counter += (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * 3);
+    counter = Math.max(1250, Math.min(1320, counter));
+    const el = document.getElementById('cl-ticker-counter');
+    if (el) el.textContent = counter.toLocaleString('en-IN') + ' investors active now';
+  }
+
+  // Rotate message every 4–6 seconds
+  function scheduleNext() {
+    const delay = 4000 + Math.random() * 2000;
+    setTimeout(function() {
+      // Check prefers-reduced-motion — still rotate text, just no animation
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const el = document.getElementById('cl-ticker-msg');
+        if (el) { el.classList.remove('cl-ticker__toast'); }
+      }
+      nextMessage();
+      driftCounter();
+      scheduleNext();
+    }, delay);
+  }
+
+  if (document.getElementById('cl-ticker-msg')) scheduleNext();
+})();
+</script>
+{% endif %}
+

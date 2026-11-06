@@ -1,0 +1,86 @@
+{% comment %}
+_base.html — Global base template for ALL Cedarline pages.
+Every page template extends this. Contains the design system CSS, header, footer,
+and all shared block definitions.
+
+Blocks available to child templates:
+  {% block title %}     — <title> text
+  {% block pre_content %}  — above .cl-main (e.g., urgency banner slot)
+  {% block content %}   — main page body (inside .cl-wrap .cl-main)
+  {% block scripts %}   — before </body>
+
+Do NOT put platform-name headings inside {% block content %} children —
+the header already shows "Cedarline".
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ C.PLATFORM_NAME }}{% endblock %} — {{ C.PLATFORM_NAME }}</title>
+
+  {# Load the shared design system CSS (no external CDN) #}
+  <link rel="stylesheet" href="{{ static 'cedarline/cedarline.css' }}">
+
+  {# Extra per-page styles #}
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+
+{# =========================================================================
+   HEADER — shown on every page
+   ========================================================================= #}
+<header class="cl-header" role="banner">
+  <div class="cl-wrap">
+    <div class="cl-header__inner">
+
+      {# Inline SVG logo — fictional leaf/chart mark, max-height 48px #}
+      <svg class="cl-header__logo" viewBox="0 0 48 48" fill="none"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+           style="max-height:48px;width:auto;">
+        <rect width="48" height="48" rx="10" fill="rgba(255,255,255,0.15)"/>
+        {# Simple stylised upward-trend line icon #}
+        <polyline points="8,36 18,24 28,30 40,14"
+                  stroke="#ffffff" stroke-width="3" stroke-linecap="round"
+                  stroke-linejoin="round" fill="none"/>
+        <circle cx="40" cy="14" r="3" fill="#a7f3c0"/>
+      </svg>
+
+      <div class="cl-header__text">
+        <div class="cl-header__name">{{ C.PLATFORM_NAME }}</div>
+        <div class="cl-header__tagline">Smart, secure, transparent</div>
+      </div>
+
+    </div>
+  </div>
+</header>
+
+{# =========================================================================
+   PRE-CONTENT slot — urgency banner lives here (injected by investment pages)
+   ========================================================================= #}
+{% block pre_content %}{% endblock %}
+
+{# =========================================================================
+   MAIN CONTENT
+   ========================================================================= #}
+<main class="cl-main" role="main">
+  <div class="cl-wrap">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+{# =========================================================================
+   FOOTER
+   ========================================================================= #}
+<footer class="cl-footer" role="contentinfo">
+  {{ C.PLATFORM_NAME }} is a fictional platform used for this study.
+</footer>
+
+{# =========================================================================
+   SCRIPTS
+   ========================================================================= #}
+{% block scripts %}{% endblock %}
+
+</body>
+</html>
+

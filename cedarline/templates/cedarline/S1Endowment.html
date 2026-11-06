@@ -1,0 +1,51 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+S1Endowment.html — Stage 1: Show initial endowment of Rs 1,000.
+No manipulative cues at S1 (not in cue matrix).
+{% endcomment %}
+
+{% block title %}Your Account{% endblock %}
+
+{% block content %}
+{# Stage progress (8 investment stages) #}
+<div class="cl-progress__label">Investment Stage 1 of 8</div>
+<div class="cl-progress" role="progressbar" aria-valuenow="1" aria-valuemax="8">
+  <div class="cl-progress__step cl-progress__step--active"></div>
+  {% for i in "2345678" %}<div class="cl-progress__step"></div>{% endfor %}
+</div>
+
+<div class="cl-card cl-card--accent">
+  <h1>Your Account Balance</h1>
+  <p>Welcome to {{ platform_name }}. Your account has been funded for this session.</p>
+</div>
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ endowment }}</div>
+    <div class="cl-balance-card__sub">Your virtual funds</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs 0</div>
+    <div class="cl-balance-card__sub">Not yet invested</div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <p>
+    You have <strong>Rs {{ endowment }}</strong> in virtual cash available
+    for this session.
+  </p>
+  <p>
+    In the next step, Rs {{ commit }} will be automatically committed
+    to the {{ platform_name }} investment platform.
+  </p>
+
+  <form method="post" class="cl-mt-2">
+    {% csrf_token %}
+    <button type="submit" class="cl-btn cl-btn--primary">Continue →</button>
+  </form>
+</div>
+{% endblock %}
+

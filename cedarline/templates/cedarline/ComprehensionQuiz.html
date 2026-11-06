@@ -1,0 +1,187 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+ComprehensionQuiz.html — Step 4: 4-item quiz, 2 attempts, live feedback.
+Dropdowns start blank. Answers submitted via WebSocket (live_method).
+Fixed feedback on wrong answers.
+{% endcomment %}
+
+{% block title %}Comprehension Check{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Comprehension Check</h1>
+  <p>
+    Please answer the questions below to confirm you understand how the study
+    works. You have <strong>2 attempts</strong>.
+  </p>
+  {% if quiz_attempts > 0 %}
+  <div class="cl-alert cl-alert--warn">
+    Attempt {{ quiz_attempts }} of 2. Please review the instructions and try again.
+  </div>
+  {% endif %}
+</div>
+
+<div class="cl-card" id="quiz-card">
+  <form id="quiz-form">
+
+    {# Q1: Initial investment #}
+    <div class="cl-form-group" id="grp-q_initial">
+      <label class="cl-label" for="q_initial">
+        1. What is the fixed initial investment placed on the platform?
+      </label>
+      <select class="cl-select" id="q_initial" name="q_initial" required>
+        <option value="" disabled selected>Select an answer</option>
+        <option value="50">Rs 50</option>
+        <option value="100">Rs 100</option>
+        <option value="200">Rs 200</option>
+        <option value="500">Rs 500</option>
+      </select>
+      <div class="cl-quiz-feedback" id="fb-q_initial" style="display:none"></div>
+    </div>
+
+    {# Q2: Maximum reinvestment #}
+    <div class="cl-form-group" id="grp-q_max_r">
+      <label class="cl-label" for="q_max_r">
+        2. What is the maximum additional amount you can reinvest?
+      </label>
+      <select class="cl-select" id="q_max_r" name="q_max_r" required>
+        <option value="" disabled selected>Select an answer</option>
+        <option value="500">Rs 500</option>
+        <option value="600">Rs 600</option>
+        <option value="{{ max_reinvest }}">Rs {{ max_reinvest }}</option>
+        <option value="800">Rs 800</option>
+        <option value="900">Rs 900</option>
+      </select>
+      <div class="cl-quiz-feedback" id="fb-q_max_r" style="display:none"></div>
+    </div>
+
+    {# Q3: Can value rise or fall? #}
+    <div class="cl-form-group" id="grp-q_can_fall">
+      <label class="cl-label" for="q_can_fall">
+        3. Can the platform value go down as well as up?
+      </label>
+      <select class="cl-select" id="q_can_fall" name="q_can_fall" required>
+        <option value="" disabled selected>Select an answer</option>
+        <option value="yes">Yes — it can rise or fall</option>
+        <option value="no">No — it always goes up</option>
+      </select>
+      <div class="cl-quiz-feedback" id="fb-q_can_fall" style="display:none"></div>
+    </div>
+
+    {# Q4: Lottery weight #}
+    <div class="cl-form-group" id="grp-q_lottery">
+      <label class="cl-label" for="q_lottery">
+        4. What determines the number of lottery entries you receive?
+      </label>
+      <select class="cl-select" id="q_lottery" name="q_lottery" required>
+        <option value="" disabled selected>Select an answer</option>
+        <option value="balance">Your final balance</option>
+        <option value="random">A random draw</option>
+        <option value="invest">The amount you reinvest</option>
+        <option value="time">How fast you answer</option>
+      </select>
+      <div class="cl-quiz-feedback" id="fb-q_lottery" style="display:none"></div>
+    </div>
+
+    <div id="quiz-global-msg" style="display:none" class="cl-alert" role="alert"></div>
+
+    <div class="cl-mt-2">
+      <button type="submit" class="cl-btn cl-btn--primary" id="quiz-btn">
+        Submit Answers
+      </button>
+    </div>
+  </form>
+</div>
+
+{# Hidden oTree next-page form — submitted by JS after quiz passes #}
+<form method="post" id="otree-form" style="display:none">
+  {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var liveSocket = null;
+
+// Connect to oTree live WebSocket
+(function() {
+  var wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  var wsUrl = wsScheme + '://' + window.location.host + '/live/{{ player.id_in_group }}/{{ player.subsession.session.code }}/';
+  // oTree v5 live_method path
+  try {
+    liveSocket = new WebSocket(wsUrl);
+  } catch(e) {
+    // Fallback: use form submit
+  }
+  if (liveSocket) {
+    liveSocket.onmessage = function(e) {
+      var data = JSON.parse(e.data);
+      var payload = data[{{ player.id_in_group }}] || data;
+      handleQuizResult(payload);
+    };
+  }
+})();
+
+function handleQuizResult(result) {
+  var statusEl = document.getElementById('quiz-global-msg');
+  statusEl.style.display = 'block';
+
+  if (result.status === 'pass') {
+    statusEl.className = 'cl-alert cl-alert--success';
+    statusEl.textContent = 'All correct! Proceeding…';
+    document.getElementById('quiz-btn').disabled = true;
+    setTimeout(function() {
+      document.getElementById('otree-form').submit();
+    }, 800);
+    return;
+  }
+
+  // Show per-question feedback
+  var fields = ['q_initial', 'q_max_r', 'q_can_fall', 'q_lottery'];
+  if (result.results) {
+    fields.forEach(function(key) {
+      var fb = document.getElementById('fb-' + key);
+      if (!fb) return;
+      fb.style.display = 'block';
+      if (result.results[key]) {
+        fb.className = 'cl-quiz-feedback cl-quiz-feedback--correct';
+        fb.textContent = '✓ Correct';
+      } else {
+        fb.className = 'cl-quiz-feedback cl-quiz-feedback--wrong';
+        fb.textContent = '✗ Incorrect — please review the instructions.';
+      }
+    });
+  }
+
+  if (result.status === 'fail_final') {
+    statusEl.className = 'cl-alert cl-alert--danger';
+    statusEl.textContent = 'You have used both attempts. Redirecting…';
+    document.getElementById('quiz-btn').disabled = true;
+    setTimeout(function() {
+      document.getElementById('otree-form').submit();
+    }, 1500);
+  } else {
+    statusEl.className = 'cl-alert cl-alert--warn';
+    statusEl.textContent = 'Some answers were incorrect. Please try again (attempt 2 of 2).';
+  }
+}
+
+document.getElementById('quiz-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var payload = {
+    action: 'submit_quiz',
+    q_initial:  document.getElementById('q_initial').value,
+    q_max_r:    document.getElementById('q_max_r').value,
+    q_can_fall: document.getElementById('q_can_fall').value,
+    q_lottery:  document.getElementById('q_lottery').value,
+  };
+  if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
+    liveSocket.send(JSON.stringify(payload));
+  } else {
+    // Fallback: direct form submit (quiz logic handled server-side on next page)
+    document.getElementById('otree-form').submit();
+  }
+});
+</script>
+{% endblock %}
+

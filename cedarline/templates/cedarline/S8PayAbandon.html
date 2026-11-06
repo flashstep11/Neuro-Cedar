@@ -1,0 +1,99 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+S8PayAbandon.html — Stage 8: Pay fee and receive funds, or abandon.
+Cue matrix: Manipulative → banner + ticker + styled CTA.
+Financial facts identical across both arms.
+{% endcomment %}
+
+{% block title %}Complete Withdrawal{% endblock %}
+
+{% block pre_content %}
+{% if is_manipulative %}
+  {% include "cedarline/_urgency_banner.html" %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="cl-progress__label">Investment Stage 8 of 8</div>
+<div class="cl-progress" role="progressbar" aria-valuenow="8" aria-valuemax="8">
+  {% for i in "1234567" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
+  <div class="cl-progress__step cl-progress__step--active"></div>
+</div>
+
+{% if is_manipulative %}
+  {% include "cedarline/_manip_components.html" with show_tier=False show_ticker=True %}
+{% endif %}
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs {{ platform_balance }}</div>
+  </div>
+</div>
+
+<div class="cl-info-box cl-mb-2">
+  <ul>
+    <li>Processing fee: <strong>Rs {{ fee }}</strong> (deducted from cash)</li>
+    <li>
+      <strong>Pay fee:</strong> final balance = Rs {{ final_if_pay }}
+      (cash Rs {{ cash_balance }} − Rs {{ fee }} + platform Rs {{ platform_balance }})
+    </li>
+    <li>
+      <strong>Abandon:</strong> final balance = Rs {{ final_if_abandon }}
+      (keep cash only; forfeit platform balance)
+    </li>
+  </ul>
+</div>
+
+{# Pay option #}
+<div class="cl-card cl-mb-2">
+  <h2>Option A — Pay the Fee &amp; Receive Funds</h2>
+  <p>
+    Pay Rs {{ fee }} from your cash. Your platform balance of
+    Rs {{ platform_balance }} will be transferred to you.
+  </p>
+  <p>
+    <strong>Final balance if you pay: Rs {{ final_if_pay }}</strong>
+  </p>
+
+  <form method="post" id="form-pay">
+    {% csrf_token %}
+    <input type="hidden" name="pay_decision" value="True">
+    {% if is_manipulative %}
+      <button type="submit"
+              class="cl-btn cl-btn--manip-primary cl-pulse">
+        Pay Rs {{ fee }} &amp; Receive Funds
+      </button>
+    {% else %}
+      <button type="submit" class="cl-btn cl-btn--primary">
+        Pay Rs {{ fee }} &amp; Receive Funds
+      </button>
+    {% endif %}
+  </form>
+</div>
+
+{# Abandon option #}
+<div class="cl-card">
+  <h2>Option B — Do Not Pay, Abandon Platform Balance</h2>
+  <p>
+    Keep your cash of Rs {{ cash_balance }}.
+    Your platform balance of Rs {{ platform_balance }} will be forfeited.
+  </p>
+  <p>
+    <strong>Final balance if you abandon: Rs {{ final_if_abandon }}</strong>
+  </p>
+
+  <form method="post" id="form-abandon" class="cl-mt-1">
+    {% csrf_token %}
+    <input type="hidden" name="pay_decision" value="False">
+    <button type="submit" class="cl-btn cl-btn--outline">
+      Abandon Platform Balance
+    </button>
+  </form>
+</div>
+{% endblock %}
+

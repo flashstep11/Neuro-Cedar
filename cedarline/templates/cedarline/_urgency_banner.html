@@ -1,0 +1,56 @@
+{% comment %}
+_urgency_banner.html — Urgency banner for manipulative arm.
+Inject into {% block pre_content %} of investment stage pages.
+
+Variables expected (from page vars_for_template):
+  timer_deadline_ts   — unix timestamp (float) of the deadline
+  timer_remaining_secs — pre-computed seconds remaining on first render
+
+The countdown runs in JS; the deadline is server-side so refresh never resets it.
+At zero the banner shows "Window extended" — no other effect.
+{% endcomment %}
+
+<div class="cl-urgency-banner" role="alert" aria-live="assertive"
+     id="cl-urgency-banner">
+  <span class="cl-urgency-banner__dot" aria-hidden="true"></span>
+  <span>VIP tier window closes in</span>
+  <span class="cl-urgency-timer" id="cl-timer-display"
+        aria-label="Time remaining">{{ timer_remaining_secs }}s</span>
+</div>
+
+<script>
+(function() {
+  // Deadline stored server-side once; every render computes from it.
+  const DEADLINE_TS = {{ timer_deadline_ts }};  // unix timestamp (float)
+  const timerEl = document.getElementById('cl-timer-display');
+  const bannerEl = document.getElementById('cl-urgency-banner');
+  if (!timerEl) return;
+
+  function fmt(s) {
+    if (s <= 0) return "00:00";
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+
+  function tick() {
+    var remaining = Math.round(DEADLINE_TS - Date.now() / 1000);
+    if (remaining > 0) {
+      timerEl.textContent = fmt(remaining);
+    } else {
+      // Timer expired: show "Window extended" only — NO other side effects.
+      timerEl.textContent = '';
+      if (bannerEl) {
+        bannerEl.innerHTML =
+          '<span class="cl-urgency-banner__dot" aria-hidden="true"></span>' +
+          '<span>Window extended</span>';
+      }
+      return; // stop ticking
+    }
+    setTimeout(tick, 1000);
+  }
+
+  tick();
+})();
+</script>
+

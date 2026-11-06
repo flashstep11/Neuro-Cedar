@@ -1,0 +1,143 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+PostTask.html — Step 7: Post-task questionnaire.
+Trust, legitimacy, risk, confidence (1-7 Likert);
+reward/UI noticed; attention check; suspicion (free text);
+Financial literacy and DOSPERT placeholders.
+{% endcomment %}
+
+{% block title %}Study Questionnaire{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Post-Task Questionnaire</h1>
+  <p>
+    Thank you for completing the investment task. Please answer the following
+    questions about your experience.
+  </p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  {# ---- Section 1: Perceptions ---- #}
+  <div class="cl-card">
+    <h2>Your Perceptions</h2>
+    <p class="cl-muted">Rate each item from 1 (strongly disagree / not at all)
+       to 7 (strongly agree / extremely).</p>
+
+    {% for field_name, label in perceptions %}
+    <div class="cl-form-group">
+      <label class="cl-label">{{ label }}</label>
+      <div class="cl-scale" role="radiogroup" aria-label="{{ label }}">
+        {% for val in "1234567" %}
+        <div class="cl-scale__option">
+          <input type="radio" name="{{ field_name }}" id="{{ field_name }}_{{ val }}"
+                 value="{{ val }}" required>
+          <label for="{{ field_name }}_{{ val }}">{{ val }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ---- Section 2: Awareness checks ---- #}
+  <div class="cl-card">
+    <h2>Awareness</h2>
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        Did you notice a difference in the investment returns shown across
+        different sessions of this study?
+      </label>
+      <ul class="cl-radio-group">
+        <li><label><input type="radio" name="q_reward_noticed" value="yes" required> Yes</label></li>
+        <li><label><input type="radio" name="q_reward_noticed" value="no"> No</label></li>
+      </ul>
+    </div>
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        Did you notice any elements of the platform that seemed designed to
+        influence your decisions?
+      </label>
+      <ul class="cl-radio-group">
+        <li><label><input type="radio" name="q_ui_noticed" value="yes" required> Yes</label></li>
+        <li><label><input type="radio" name="q_ui_noticed" value="no"> No</label></li>
+      </ul>
+    </div>
+  </div>
+
+  {# ---- Section 3: Attention check ---- #}
+  <div class="cl-card">
+    <h2>Attention Check</h2>
+    <p class="cl-muted">
+      To confirm you are reading carefully, please select <strong>4</strong>
+      for the question below.
+    </p>
+    <div class="cl-form-group">
+      <label class="cl-label">
+        Select the number 4 from the scale below:
+      </label>
+      <div class="cl-scale" role="radiogroup" aria-label="Attention check">
+        {% for val in "1234567" %}
+        <div class="cl-scale__option">
+          <input type="radio" name="q_attention" id="q_att_{{ val }}"
+                 value="{{ val }}" required>
+          <label for="q_att_{{ val }}">{{ val }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ---- Section 4: Suspicion check ---- #}
+  <div class="cl-card">
+    <h2>Your Impressions</h2>
+    <div class="cl-form-group">
+      <label class="cl-label" for="q_suspicion">
+        Did you have any suspicions about the purpose of this study?
+        (Optional — please describe in your own words.)
+      </label>
+      <textarea class="cl-textarea" id="q_suspicion" name="q_suspicion"
+                rows="3" maxlength="1000"
+                placeholder="Describe any suspicions or thoughts here…"></textarea>
+    </div>
+  </div>
+
+  {# ---- Section 5: Financial literacy PLACEHOLDER ---- #}
+  <div class="cl-card">
+    <h2>Financial Knowledge
+      <span class="cl-muted" style="font-size:.85rem;font-weight:400;">
+        <!-- TODO: confirm validated wording and permissions before deployment -->
+      </span>
+    </h2>
+    <div class="cl-alert cl-alert--info">
+      <strong>TODO:</strong> Insert validated financial literacy scale items here.
+      Confirm wording and usage permissions with the research team before
+      deploying to participants.
+    </div>
+  </div>
+
+  {# ---- Section 6: DOSPERT PLACEHOLDER ---- #}
+  <div class="cl-card">
+    <h2>Risk Preferences
+      <span class="cl-muted" style="font-size:.85rem;font-weight:400;">
+        <!-- TODO: confirm validated wording and permissions before deployment -->
+      </span>
+    </h2>
+    <div class="cl-alert cl-alert--info">
+      <strong>TODO:</strong> Insert DOSPERT items here (financial domain).
+      Confirm validated wording and permissions before deploying.
+    </div>
+  </div>
+
+  <div class="cl-mt-2">
+    <button type="submit" class="cl-btn cl-btn--primary">
+      Submit Questionnaire →
+    </button>
+  </div>
+</form>
+{% endblock %}
+

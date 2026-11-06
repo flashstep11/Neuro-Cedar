@@ -1,0 +1,133 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+Debrief.html — Full debrief page.
+Names what was simulated; states pool was random and independent;
+support resources as [VERIFY] placeholders.
+{% endcomment %}
+
+{% block title %}Study Debrief{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Study Debrief</h1>
+  <p>
+    Thank you for participating in this study.
+    Please read the following information carefully.
+  </p>
+</div>
+
+{% if exit_code == "left_at_content_warning" %}
+<div class="cl-alert cl-alert--info">
+  You exited the study at the content warning stage. No study data was
+  recorded. Thank you for your time.
+</div>
+{% elif exit_code == "quiz_failed_twice" %}
+<div class="cl-alert cl-alert--info">
+  You exited the study after the comprehension check. No study data was
+  recorded. Thank you for your time.
+</div>
+{% else %}
+
+<div class="cl-card">
+  <h2>What Was This Study About?</h2>
+  <p>
+    This study examined how <strong>app-based investment fraud tactics</strong>
+    influence decision-making. Specifically, we were interested in how features
+    of an investment interface affect people's choices about reinvesting money
+    and paying withdrawal fees.
+  </p>
+</div>
+
+<div class="cl-card">
+  <h2>What Was Simulated</h2>
+  <p>The following elements were part of the study design:</p>
+  <ul>
+    <li>
+      <strong>Return on initial investment</strong> — Some participants saw a
+      0% return and some saw a 35% return on the initial Rs 100. This was
+      randomly determined and was intended to study how initial returns
+      affect subsequent decisions.
+    </li>
+    <li>
+      <strong>Social proof cues</strong> — Some participants saw a ticker
+      showing fictional investor activity (e.g., "Aarav K. just reinvested").
+      These messages were entirely fictional and not based on any real data.
+    </li>
+    <li>
+      <strong>Urgency timer</strong> — Some participants saw a countdown
+      timer labelled "VIP tier window closes in…". This timer was
+      non-binding and had no effect on the study or outcomes.
+    </li>
+    <li>
+      <strong>Withdrawal processing fee</strong> — The Rs 200 processing fee
+      is a common tactic in real app-based investment fraud (sometimes called
+      a "recovery scam"). In this study, all balances were virtual and no
+      real money was involved.
+    </li>
+  </ul>
+</div>
+
+<div class="cl-card">
+  <h2>About the Pool Return</h2>
+  <p>
+    The return applied to your reinvestment (which could be roughly
+    {{ pool_min_pct }}% to +{{ pool_max_pct }}%) was
+    <strong>randomly determined</strong> and was
+    <strong>independent of</strong>:
+  </p>
+  <ul>
+    <li>Your reward condition (0% or 35% initial return)</li>
+    <li>The interface you saw (neutral or persuasive)</li>
+    <li>The amount you chose to reinvest</li>
+  </ul>
+</div>
+
+<div class="cl-card">
+  <h2>Lottery</h2>
+  <p>
+    The lottery is real. Four Rs 250 gift vouchers will be awarded to
+    participants by draw, weighted by final balance. Winners will be
+    contacted using the details you provided (if any) or via your claim token.
+  </p>
+  <p class="cl-muted">
+    Results will be shared by: [VERIFY: insert deadline/date]
+  </p>
+</div>
+
+{% endif %}
+
+<div class="cl-card">
+  <h2>Support Resources</h2>
+  <p>
+    If this study raised concerns or you would like to report a suspected
+    investment fraud:
+  </p>
+  <ul>
+    <li>
+      SEBI (Securities and Exchange Board of India) complaint portal:
+      [VERIFY: insert URL — do not invent contact details]
+    </li>
+    <li>
+      Cyber Crime reporting portal (India):
+      [VERIFY: insert URL — do not invent contact details]
+    </li>
+    <li>
+      Research team contact: [VERIFY: insert email]
+    </li>
+  </ul>
+  <p class="cl-muted">
+    [VERIFY: All support links and contact details must be confirmed before
+    any participant sees this page.]
+  </p>
+</div>
+
+<div class="cl-card cl-text-center">
+  <p>
+    <strong>Thank you for your participation.</strong><br>
+    Your contribution helps us understand how to better protect people
+    from app-based investment fraud.
+  </p>
+  <p class="cl-muted cl-mt-2">You may close this window.</p>
+</div>
+{% endblock %}
+

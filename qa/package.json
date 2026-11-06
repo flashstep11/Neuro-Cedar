@@ -1,0 +1,12 @@
+{
+  "name": "cedarline-qa",
+  "version": "1.0.0",
+  "description": "Playwright QA screenshot script for Cedarline study",
+  "scripts": {
+    "qa": "node playwright_qa.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0"
+  }
+}

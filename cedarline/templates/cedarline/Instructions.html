@@ -1,0 +1,110 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+Instructions.html — Step 2: Study instructions and lottery explanation.
+Pool min/max pulled from config vars (never hardcoded).
+Must state answers to all quiz items explicitly.
+{% endcomment %}
+
+{% block title %}Study Instructions{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>How This Study Works</h1>
+
+  <p>
+    Welcome to the {{ platform_name }} study. Please read the following
+    instructions carefully. You will be tested on this information before
+    proceeding.
+  </p>
+</div>
+
+<div class="cl-card">
+  <h2>The Investment Task</h2>
+
+  <p>You will participate in a <strong>simulated investment</strong> on a
+  fictional platform called <strong>{{ platform_name }}</strong>.</p>
+
+  <div class="cl-info-box">
+    <ul>
+      <li>
+        You begin with a virtual account balance of <strong>Rs 1,000</strong>.
+      </li>
+      <li>
+        A fixed <strong>Rs {{ initial_invest }}</strong> is committed to the
+        platform automatically — this is your <strong>initial investment</strong>.
+      </li>
+      <li>
+        The platform will show you a return on your initial investment.
+      </li>
+      <li>
+        You can then choose to reinvest an additional amount,
+        from <strong>Rs 0 to a maximum of Rs {{ max_reinvest }}</strong>
+        (in steps of Rs 50). This is the
+        <strong>maximum reinvestment</strong>.
+      </li>
+      <li>
+        After reinvesting, the platform applies a randomly determined
+        return to your reinvested amount. The platform value can
+        <strong>rise or fall</strong> — roughly
+        <strong>{{ pool_min_pct }}% to +{{ pool_max_pct }}%</strong> from
+        your reinvestment.
+      </li>
+      <li>
+        You will then be given the option to withdraw your funds
+        (which involves a processing fee that will be explained at that stage).
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="cl-card">
+  <h2>Lottery Prize</h2>
+
+  <p>
+    At the end of the study, <strong>{{ prize_count }} unique Rs {{ prize_value }}
+    gift vouchers</strong> will be awarded by lottery to participants.
+  </p>
+
+  <div class="cl-info-box">
+    <ul>
+      <li>Your <strong>number of lottery entries</strong> equals your
+          <strong>final balance ÷ {{ lottery_div }}</strong>.</li>
+      <li>A higher final balance means more entries and a better chance of
+          winning a voucher.</li>
+      <li><strong>No real deposit is required</strong> — all balances in this
+          study are virtual.</li>
+    </ul>
+  </div>
+
+  <p class="cl-muted">
+    <strong>Example:</strong> if your final balance is Rs 950, you have
+    95 lottery entries.
+  </p>
+</div>
+
+<div class="cl-card">
+  <h2>Summary — Key Facts</h2>
+  <p class="cl-muted cl-mb-2">(You will be quizzed on these.)</p>
+
+  <div class="cl-info-box">
+    <ol>
+      <li>Your <strong>initial investment</strong> on the platform is
+          <strong>Rs {{ initial_invest }}</strong>.</li>
+      <li>The <strong>maximum reinvestment</strong> you can choose is
+          <strong>Rs {{ max_reinvest }}</strong>.</li>
+      <li>The platform value <strong>can rise or fall</strong>
+          (roughly {{ pool_min_pct }}% to +{{ pool_max_pct }}%).</li>
+      <li>Your <strong>lottery entries</strong> are determined by your
+          <strong>final balance</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" class="cl-btn cl-btn--primary">
+    I've Read the Instructions →
+  </button>
+</form>
+{% endblock %}
+

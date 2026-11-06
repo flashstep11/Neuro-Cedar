@@ -1,0 +1,37 @@
+{% extends "cedarline/_base.html" %}
+{% comment %}
+QuizFailed.html — Exit page for participants who failed the comprehension quiz twice.
+{% endcomment %}
+
+{% block title %}Study Complete{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>Thank You for Your Interest</h1>
+
+  <div class="cl-alert cl-alert--warn">
+    Unfortunately, you were not able to complete the comprehension check
+    within the allowed attempts.
+  </div>
+
+  <p>
+    To participate in this study, it is important that all participants
+    understand the task before proceeding.
+  </p>
+
+  <p>
+    Your data has <strong>not</strong> been recorded, and no information about
+    you has been stored.
+  </p>
+
+  <p class="cl-muted">
+    If you believe this is an error or have questions, please contact the
+    research team at: [VERIFY: insert contact email].
+  </p>
+
+  <hr class="cl-divider">
+
+  <p class="cl-muted">You may close this window.</p>
+</div>
+{% endblock %}
+
