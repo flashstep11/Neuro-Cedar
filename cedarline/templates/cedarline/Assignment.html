@@ -1,8 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-Assignment.html — Brief transition page while assignment is processed.
-Concealed: shows only a loading message.
-{% endcomment %}
+
 
 {% block title %}Setting Up…{% endblock %}
 
@@ -14,7 +11,7 @@ Concealed: shows only a loading message.
   <p class="cl-muted">This will only take a second.</p>
 
   <form method="post" id="auto-submit">
-    {% csrf_token %}
+    
   </form>
 </div>
 {% endblock %}

@@ -1,8 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S2Commitment.html — Stage 2: Fixed Rs 100 committed to platform.
-Cue matrix: Manipulative → banner + tier card + ticker.
-{% endcomment %}
+
 
 {% block title %}Initial Investment{% endblock %}
 
@@ -21,7 +18,8 @@ Cue matrix: Manipulative → banner + tier card + ticker.
 </div>
 
 {% if is_manipulative %}
-  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+  {% include "cedarline/_tier_card.html" %}
+  {% include "cedarline/_ticker.html" %}
 {% endif %}
 
 <div class="cl-card cl-card--accent">
@@ -53,7 +51,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
   <p class="cl-muted">Your remaining cash: Rs {{ cash_balance }}</p>
 
   <form method="post" class="cl-mt-2">
-    {% csrf_token %}
+    
     <button type="submit" class="cl-btn cl-btn--primary">
       See Your Return →
     </button>

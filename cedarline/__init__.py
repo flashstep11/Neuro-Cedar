@@ -116,6 +116,9 @@ class Player(o.BasePlayer):
     platform_balance_decision = _m.IntegerField(blank=True)  # P at decision point
     final_balance_int         = _m.IntegerField(blank=True)  # final balance Rs
     pay_decision              = _m.BooleanField(blank=True)  # True=pay, False=abandon
+    # pay_decision_str is the form submission vehicle ("pay" or "abandon");
+    # converted to pay_decision in S8.before_next_page. Keeps BooleanField off forms.
+    pay_decision_str          = _m.StringField(blank=True)
     outcome_flag              = _m.StringField(blank=True)   # ledger.classify() result
     lottery_weight            = _m.FloatField(blank=True)    # final_balance / 10
 
@@ -158,7 +161,11 @@ def _reward_fraction(player) -> Fr:
 
 def _pool_return_fraction(player) -> Fr:
     """Return the pool return Fraction (r) stored for this player."""
-    return Fr(player.pool_return_num, player.pool_return_den)
+    num = player.field_maybe_none('pool_return_num')
+    den = player.field_maybe_none('pool_return_den') or 1
+    if num is None:
+        return Fr(0)
+    return Fr(num, den)
 
 
 def _r_options_display():
@@ -193,11 +200,11 @@ def _compute_and_store_final(player, pay: bool):
     Compute final balance and flags using ledger; store in Player fields.
     Call once at S8; idempotent (re-calling with same pay won't change stored values).
     """
-    if player.final_balance_int is not None:
+    if player.field_maybe_none('final_balance_int') is not None:
         return  # already computed
 
     g = _reward_fraction(player)
-    R = player.reinvest_amount
+    R = player.field_maybe_none('reinvest_amount') or 0
     r = _pool_return_fraction(player)
 
     P   = ledger.platform_balance(g, R, r)
@@ -372,7 +379,7 @@ class _InvestBase(o.Page):
     @staticmethod
     def _base_vars(player):
         g = _reward_fraction(player)
-        R = player.reinvest_amount
+        R = player.field_maybe_none('reinvest_amount')
         # Compute platform balance for display (uses reward only, not pool)
         # At stages before S5 (pool not yet drawn), show COMMIT * (1+g)
         platform_at_commit = int(ledger.COMMIT * (1 + g))
@@ -382,10 +389,12 @@ class _InvestBase(o.Page):
         # Every render computes remaining from the stored deadline, so
         # refresh never resets the timer.
         now = _now_ts()
-        if player.ui_condition == "manipulative" and not player.timer_deadline_ts:
+        deadline = player.field_maybe_none('timer_deadline_ts')
+        if player.ui_condition == "manipulative" and not deadline:
             player.timer_deadline_ts  = now + C.TIMER_SECS
             player.s4_first_render_ts = now
-        deadline = player.timer_deadline_ts or (now + C.TIMER_SECS)
+            deadline = player.timer_deadline_ts
+        deadline = deadline or (now + C.TIMER_SECS)
         remaining = max(0, int(deadline - now))
 
         return {
@@ -519,7 +528,7 @@ class S4Reinvestment(_InvestBase):
     def before_next_page(player, timeout_happened):
         # Draw pool return AFTER R is submitted, exactly once (idempotent).
         # This runs when leaving S4 so S5 can display the outcome.
-        if player.pool_return_num is None:
+        if player.field_maybe_none('pool_return_num') is None:
             condition_key = f"{player.ui_condition}_{player.reward_condition}"
             r = draw_pool_return(condition_key)
             player.pool_return_num = r.numerator
@@ -539,17 +548,22 @@ class S5PoolOutcome(_InvestBase):
     def vars_for_template(player):
         v = _InvestBase._base_vars(player)
         g = _reward_fraction(player)
-        R = player.reinvest_amount or 0
+        R = player.field_maybe_none('reinvest_amount') or 0
 
         # Show platform balance including pool outcome if already drawn,
         # else show just the committed amount (shouldn't happen but guard)
-        if player.pool_return_num is not None:
-            r = _pool_return_fraction(player)
+        pool_num = player.field_maybe_none('pool_return_num')
+        pool_den = player.field_maybe_none('pool_return_den') or 1
+        if pool_num is not None:
+            r = Fr(pool_num, pool_den)
             P = ledger.platform_balance(g, R, r)
+            pct = int(r * 100)
             v["platform_balance"]     = int(P)
-            v["pool_return_pct"]      = int(Fr(player.pool_return_num, player.pool_return_den) * 100)
+            v["pool_return_pct"]      = pct
+            v["pool_return_str"]      = f"+{pct}%" if pct >= 0 else f"{pct}%"
         else:
-            v["pool_return_pct"]  = None
+            v["pool_return_pct"]      = 0
+            v["pool_return_str"]      = "0%"
 
         v["stage"]           = 5
         v["stage_label"]     = "Platform Update"
@@ -575,7 +589,7 @@ class S6Withdraw(_InvestBase):
     def vars_for_template(player):
         v = _InvestBase._base_vars(player)
         g = _reward_fraction(player)
-        R = player.reinvest_amount or 0
+        R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
         P = ledger.platform_balance(g, R, r)
         v["stage"]            = 6
@@ -596,7 +610,7 @@ class S7FeeDisplay(_InvestBase):
     def vars_for_template(player):
         v = _InvestBase._base_vars(player)
         g = _reward_fraction(player)
-        R = player.reinvest_amount or 0
+        R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
         P = ledger.platform_balance(g, R, r)
         v["stage"]            = 7
@@ -615,7 +629,7 @@ class S8PayAbandon(_InvestBase):
     Also creates a lottery entry (claim token stored in Player).
     """
     form_model  = "player"
-    form_fields = ["pay_decision"]
+    form_fields = ["pay_decision_str"]
 
     @staticmethod
     def is_displayed(player):
@@ -625,7 +639,7 @@ class S8PayAbandon(_InvestBase):
     def vars_for_template(player):
         v = _InvestBase._base_vars(player)
         g = _reward_fraction(player)
-        R = player.reinvest_amount or 0
+        R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
         P = ledger.platform_balance(g, R, r)
         # If pay: final = cash - F + P; If abandon: final = cash
@@ -643,10 +657,13 @@ class S8PayAbandon(_InvestBase):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
+        # Convert pay_decision_str ("pay" vs "abandon") to boolean
+        pay = (player.pay_decision_str == "pay")
+        player.pay_decision = pay
         # Compute final balance using ledger; idempotent
-        _compute_and_store_final(player, player.pay_decision)
+        _compute_and_store_final(player, pay)
         # Create lottery entry if not already done
-        if not player.claim_token:
+        if not player.field_maybe_none('claim_token'):
             player.claim_token = lottery_db.create_entry()
 
 
@@ -701,7 +718,7 @@ class LotteryContact(o.Page):
     def vars_for_template(player):
         return {
             "platform_name": C.PLATFORM_NAME,
-            "claim_token":   player.claim_token,
+            "claim_token":   player.field_maybe_none('claim_token') or "",
             "prize_count":   C.PRIZE_COUNT,
             "prize_value":   C.PRIZE_VALUE,
         }
@@ -713,8 +730,9 @@ class LotteryContact(o.Page):
             name  = str(data.get("name", "")).strip()
             email = str(data.get("email", "")).strip()
             phone = str(data.get("phone", "")).strip()
-            if player.claim_token:
-                lottery_db.update_contact(player.claim_token, name, email, phone)
+            token = player.field_maybe_none('claim_token')
+            if token:
+                lottery_db.update_contact(token, name, email, phone)
             return {player.id_in_group: {"status": "saved"}}
         return {}
 

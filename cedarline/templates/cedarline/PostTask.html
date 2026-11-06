@@ -1,10 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-PostTask.html — Step 7: Post-task questionnaire.
-Trust, legitimacy, risk, confidence (1-7 Likert);
-reward/UI noticed; attention check; suspicion (free text);
-Financial literacy and DOSPERT placeholders.
-{% endcomment %}
+
 
 {% block title %}Study Questionnaire{% endblock %}
 
@@ -18,9 +13,9 @@ Financial literacy and DOSPERT placeholders.
 </div>
 
 <form method="post">
-  {% csrf_token %}
+  
 
-  {# ---- Section 1: Perceptions ---- #}
+  <!-- ---- Section 1: Perceptions ---- -->
   <div class="cl-card">
     <h2>Your Perceptions</h2>
     <p class="cl-muted">Rate each item from 1 (strongly disagree / not at all)
@@ -42,7 +37,7 @@ Financial literacy and DOSPERT placeholders.
     {% endfor %}
   </div>
 
-  {# ---- Section 2: Awareness checks ---- #}
+  <!-- ---- Section 2: Awareness checks ---- -->
   <div class="cl-card">
     <h2>Awareness</h2>
 
@@ -69,7 +64,7 @@ Financial literacy and DOSPERT placeholders.
     </div>
   </div>
 
-  {# ---- Section 3: Attention check ---- #}
+  <!-- ---- Section 3: Attention check ---- -->
   <div class="cl-card">
     <h2>Attention Check</h2>
     <p class="cl-muted">
@@ -92,7 +87,7 @@ Financial literacy and DOSPERT placeholders.
     </div>
   </div>
 
-  {# ---- Section 4: Suspicion check ---- #}
+  <!-- ---- Section 4: Suspicion check ---- -->
   <div class="cl-card">
     <h2>Your Impressions</h2>
     <div class="cl-form-group">
@@ -106,7 +101,7 @@ Financial literacy and DOSPERT placeholders.
     </div>
   </div>
 
-  {# ---- Section 5: Financial literacy PLACEHOLDER ---- #}
+  <!-- ---- Section 5: Financial literacy PLACEHOLDER ---- -->
   <div class="cl-card">
     <h2>Financial Knowledge
       <span class="cl-muted" style="font-size:.85rem;font-weight:400;">
@@ -120,7 +115,7 @@ Financial literacy and DOSPERT placeholders.
     </div>
   </div>
 
-  {# ---- Section 6: DOSPERT PLACEHOLDER ---- #}
+  <!-- ---- Section 6: DOSPERT PLACEHOLDER ---- -->
   <div class="cl-card">
     <h2>Risk Preferences
       <span class="cl-muted" style="font-size:.85rem;font-weight:400;">

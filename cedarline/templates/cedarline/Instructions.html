@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-Instructions.html — Step 2: Study instructions and lottery explanation.
-Pool min/max pulled from config vars (never hardcoded).
-Must state answers to all quiz items explicitly.
-{% endcomment %}
+
 
 {% block title %}Study Instructions{% endblock %}
 
@@ -101,7 +97,7 @@ Must state answers to all quiz items explicitly.
 </div>
 
 <form method="post">
-  {% csrf_token %}
+  
   <button type="submit" class="cl-btn cl-btn--primary">
     I've Read the Instructions →
   </button>

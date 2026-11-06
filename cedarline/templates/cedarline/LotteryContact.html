@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-LotteryContact.html — Lottery contact form.
-Data sent via live_method and stored in lottery_contacts.sqlite3.
-No PII in oTree Player fields.
-{% endcomment %}
+
 
 {% block title %}Lottery Entry{% endblock %}
 
@@ -70,9 +66,9 @@ No PII in oTree Player fields.
   </div>
 </div>
 
-{# Hidden oTree next-page form #}
+<!-- Hidden oTree next-page form -->
 <form method="post" id="otree-next" style="display:none">
-  {% csrf_token %}
+  
 </form>
 {% endblock %}
 

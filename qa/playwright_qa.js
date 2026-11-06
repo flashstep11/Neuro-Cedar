@@ -350,3 +350,4 @@ async function extractFinancialValues(page) {
   console.log(`Screenshots saved to: ${OUT_DIR}`);
   console.log(`Total screenshots: ${fs.readdirSync(OUT_DIR).filter(f => f.endsWith('.png')).length}`);
 })();
+

@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S5PoolOutcome.html — Stage 5: Show pool outcome on the reinvestment.
-Pool assigned AFTER R submitted; never re-rolled on refresh.
-Cue matrix: Manipulative → banner + tier card + ticker.
-{% endcomment %}
+
 
 {% block title %}Platform Update{% endblock %}
 
@@ -22,7 +18,8 @@ Cue matrix: Manipulative → banner + tier card + ticker.
 </div>
 
 {% if is_manipulative %}
-  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+  {% include "cedarline/_tier_card.html" %}
+  {% include "cedarline/_ticker.html" %}
 {% endif %}
 
 <div class="cl-card cl-card--accent">
@@ -44,9 +41,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
       Rs {{ platform_balance }}
     </div>
     <div class="cl-balance-card__sub">
-      {% if pool_return_pct is not None %}
-        {% if pool_return_pct >= 0 %}+{% endif %}{{ pool_return_pct }}% on reinvestment
-      {% endif %}
+      {{ pool_return_str }} on reinvestment
     </div>
   </div>
 </div>
@@ -55,7 +50,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
   <p>
     You reinvested <strong>Rs {{ reinvest_amount }}</strong>.
     The platform applied
-    <strong>{% if pool_return_pct is not None %}{% if pool_return_pct >= 0 %}+{% endif %}{{ pool_return_pct }}%{% endif %}</strong>
+    <strong>{{ pool_return_str }}</strong>
     to that amount.
   </p>
   <p>
@@ -67,7 +62,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
   </p>
 
   <form method="post" class="cl-mt-2">
-    {% csrf_token %}
+    
     <button type="submit" class="cl-btn cl-btn--primary">
       Withdraw My Funds →
     </button>

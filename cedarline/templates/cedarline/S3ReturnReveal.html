@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S3ReturnReveal.html — Stage 3: Reveal the return (0% or 35%) on the Rs 100.
-Layout IDENTICAL in both reward arms; only the amount differs.
-Cue matrix: Manipulative → banner + tier card + ticker.
-{% endcomment %}
+
 
 {% block title %}Your Return{% endblock %}
 
@@ -22,7 +18,8 @@ Cue matrix: Manipulative → banner + tier card + ticker.
 </div>
 
 {% if is_manipulative %}
-  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+  {% include "cedarline/_tier_card.html" %}
+  {% include "cedarline/_ticker.html" %}
 {% endif %}
 
 <div class="cl-card cl-card--accent">
@@ -33,7 +30,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
   </p>
 </div>
 
-{# Prominent display of platform balance — IDENTICAL layout in both reward arms #}
+<!-- Prominent display of platform balance — IDENTICAL layout in both reward arms -->
 <div class="cl-balance-row">
   <div class="cl-balance-card">
     <div class="cl-balance-card__label">Cash Available</div>
@@ -59,7 +56,7 @@ Cue matrix: Manipulative → banner + tier card + ticker.
   </p>
 
   <form method="post" class="cl-mt-2">
-    {% csrf_token %}
+    
     <button type="submit" class="cl-btn cl-btn--primary">
       Make Reinvestment Decision →
     </button>

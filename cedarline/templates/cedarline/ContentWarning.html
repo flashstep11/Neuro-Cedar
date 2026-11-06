@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-ContentWarning.html — Step 1: Content warning.
-Pre-assignment: neutral styling for everyone.
-No-penalty exit button records exit_code.
-{% endcomment %}
+
 
 {% block title %}Content Warning{% endblock %}
 
@@ -36,10 +32,10 @@ No-penalty exit button records exit_code.
   </p>
 
   <div class="cl-mt-2">
-    {# oTree next-page form — if the participant advances, they agreed #}
+    <!-- oTree next-page form — if the participant advances, they agreed -->
     <form method="post">
-      {% csrf_token %}
-      {# Hidden field: exit_code stays blank if they click Continue #}
+      
+      <!-- Hidden field: exit_code stays blank if they click Continue -->
       <input type="hidden" name="exit_code" value="">
       <button type="submit" class="cl-btn cl-btn--primary">
         I Understand, Continue
@@ -48,9 +44,9 @@ No-penalty exit button records exit_code.
   </div>
 
   <div class="cl-mt-2">
-    {# No-penalty exit — sets exit_code and submits #}
+    <!-- No-penalty exit — sets exit_code and submits -->
     <form method="post" id="exit-form">
-      {% csrf_token %}
+      
       <input type="hidden" name="exit_code" value="left_at_content_warning">
       <button type="submit" class="cl-btn cl-btn--outline" style="color:var(--color-text-muted);border-color:var(--color-border);">
         Exit Study (No Penalty)

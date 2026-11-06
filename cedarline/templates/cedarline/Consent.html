@@ -1,10 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-Consent.html — Step 3: Informed consent.
-Two Yes/No questions (18+; agree to participate).
-Withdrawal code = participant.code.
-Does NOT reveal: fee amount, odds, or hypotheses.
-{% endcomment %}
+
 
 {% block title %}Consent{% endblock %}
 
@@ -49,7 +44,7 @@ Does NOT reveal: fee amount, odds, or hypotheses.
   </p>
 
   <form method="post" id="consent-form">
-    {% csrf_token %}
+    
 
     <div class="cl-form-group">
       <label class="cl-label">

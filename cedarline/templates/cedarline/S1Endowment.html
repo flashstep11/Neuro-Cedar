@@ -1,13 +1,10 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S1Endowment.html — Stage 1: Show initial endowment of Rs 1,000.
-No manipulative cues at S1 (not in cue matrix).
-{% endcomment %}
+
 
 {% block title %}Your Account{% endblock %}
 
 {% block content %}
-{# Stage progress (8 investment stages) #}
+<!-- Stage progress (8 investment stages) -->
 <div class="cl-progress__label">Investment Stage 1 of 8</div>
 <div class="cl-progress" role="progressbar" aria-valuenow="1" aria-valuemax="8">
   <div class="cl-progress__step cl-progress__step--active"></div>
@@ -43,7 +40,7 @@ No manipulative cues at S1 (not in cue matrix).
   </p>
 
   <form method="post" class="cl-mt-2">
-    {% csrf_token %}
+    
     <button type="submit" class="cl-btn cl-btn--primary">Continue →</button>
   </form>
 </div>

@@ -1,14 +1,4 @@
-{% comment %}
-_urgency_banner.html — Urgency banner for manipulative arm.
-Inject into {% block pre_content %} of investment stage pages.
 
-Variables expected (from page vars_for_template):
-  timer_deadline_ts   — unix timestamp (float) of the deadline
-  timer_remaining_secs — pre-computed seconds remaining on first render
-
-The countdown runs in JS; the deadline is server-side so refresh never resets it.
-At zero the banner shows "Window extended" — no other effect.
-{% endcomment %}
 
 <div class="cl-urgency-banner" role="alert" aria-live="assertive"
      id="cl-urgency-banner">

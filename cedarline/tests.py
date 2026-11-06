@@ -103,7 +103,8 @@ class PlayerBot(Bot):
 
         # S8 Pay/Abandon
         pay = self.player.participant.vars.get("test_pay", True)
-        yield Submission(S8PayAbandon, {"pay_decision": pay}, check_html=False)
+        pay_str = "pay" if pay else "abandon"
+        yield Submission(S8PayAbandon, {"pay_decision_str": pay_str}, check_html=False)
 
         # ---- Verify final balance matches ledger exactly ----
         g_str = self.player.reward_condition

@@ -1,11 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S4Reinvestment.html — Stage 4: Reinvestment decision.
-Dropdown: blank required, 0 to CAP in steps of STEP.
-Logs: first render, every change, final choice — via live_method.
-Cue matrix: Manipulative → banner + tier card + ticker + styled CTA.
-Timer deadline set once server-side; every render computes remaining from stored value.
-{% endcomment %}
+
 
 {% block title %}Reinvestment Decision{% endblock %}
 
@@ -24,7 +18,8 @@ Timer deadline set once server-side; every render computes remaining from stored
 </div>
 
 {% if is_manipulative %}
-  {% include "cedarline/_manip_components.html" with show_tier=True show_ticker=True %}
+  {% include "cedarline/_tier_card.html" %}
+  {% include "cedarline/_ticker.html" %}
 {% endif %}
 
 <div class="cl-balance-row">
@@ -48,7 +43,7 @@ Timer deadline set once server-side; every render computes remaining from stored
     {% endif %}
   </h2>
 
-  {# Truthful range line — always shown, identical in both arms #}
+  <!-- Truthful range line — always shown, identical in both arms -->
   <div class="cl-range-line">
     <strong>Important:</strong> The platform applies an additional return to
     your reinvested amount. This can range from roughly
@@ -57,7 +52,7 @@ Timer deadline set once server-side; every render computes remaining from stored
   </div>
 
   <form method="post" id="s4-form" class="cl-mt-2">
-    {% csrf_token %}
+    
 
     <div class="cl-form-group">
       <label class="cl-label" for="reinvest_amount">
@@ -65,7 +60,7 @@ Timer deadline set once server-side; every render computes remaining from stored
       </label>
       <select class="cl-select" id="reinvest_amount" name="reinvest_amount"
               required aria-required="true" aria-describedby="range-hint">
-        {# Blank required — no default #}
+        <!-- Blank required — no default -->
         <option value="" disabled selected>Select an amount</option>
         {% for opt in r_options %}
           <option value="{{ opt }}">Rs {{ opt }}</option>
@@ -76,7 +71,7 @@ Timer deadline set once server-side; every render computes remaining from stored
       </div>
     </div>
 
-    {# Primary button: styled CTA in manipulative arm, plain in neutral #}
+    <!-- Primary button: styled CTA in manipulative arm, plain in neutral -->
     {% if is_manipulative %}
       <button type="submit"
               class="cl-btn cl-btn--manip-primary cl-pulse"

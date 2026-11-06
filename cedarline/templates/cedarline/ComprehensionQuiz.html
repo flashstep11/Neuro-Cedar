@@ -1,9 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-ComprehensionQuiz.html — Step 4: 4-item quiz, 2 attempts, live feedback.
-Dropdowns start blank. Answers submitted via WebSocket (live_method).
-Fixed feedback on wrong answers.
-{% endcomment %}
+
 
 {% block title %}Comprehension Check{% endblock %}
 
@@ -24,7 +20,7 @@ Fixed feedback on wrong answers.
 <div class="cl-card" id="quiz-card">
   <form id="quiz-form">
 
-    {# Q1: Initial investment #}
+    <!-- Q1: Initial investment -->
     <div class="cl-form-group" id="grp-q_initial">
       <label class="cl-label" for="q_initial">
         1. What is the fixed initial investment placed on the platform?
@@ -39,7 +35,7 @@ Fixed feedback on wrong answers.
       <div class="cl-quiz-feedback" id="fb-q_initial" style="display:none"></div>
     </div>
 
-    {# Q2: Maximum reinvestment #}
+    <!-- Q2: Maximum reinvestment -->
     <div class="cl-form-group" id="grp-q_max_r">
       <label class="cl-label" for="q_max_r">
         2. What is the maximum additional amount you can reinvest?
@@ -55,7 +51,7 @@ Fixed feedback on wrong answers.
       <div class="cl-quiz-feedback" id="fb-q_max_r" style="display:none"></div>
     </div>
 
-    {# Q3: Can value rise or fall? #}
+    <!-- Q3: Can value rise or fall? -->
     <div class="cl-form-group" id="grp-q_can_fall">
       <label class="cl-label" for="q_can_fall">
         3. Can the platform value go down as well as up?
@@ -68,7 +64,7 @@ Fixed feedback on wrong answers.
       <div class="cl-quiz-feedback" id="fb-q_can_fall" style="display:none"></div>
     </div>
 
-    {# Q4: Lottery weight #}
+    <!-- Q4: Lottery weight -->
     <div class="cl-form-group" id="grp-q_lottery">
       <label class="cl-label" for="q_lottery">
         4. What determines the number of lottery entries you receive?
@@ -93,9 +89,9 @@ Fixed feedback on wrong answers.
   </form>
 </div>
 
-{# Hidden oTree next-page form — submitted by JS after quiz passes #}
+<!-- Hidden oTree next-page form — submitted by JS after quiz passes -->
 <form method="post" id="otree-form" style="display:none">
-  {% csrf_token %}
+  
 </form>
 {% endblock %}
 

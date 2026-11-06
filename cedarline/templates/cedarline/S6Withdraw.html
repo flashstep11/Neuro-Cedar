@@ -1,8 +1,5 @@
 {% extends "cedarline/_base.html" %}
-{% comment %}
-S6Withdraw.html — Stage 6: Explicit "Withdraw" click. Logs timestamp.
-Cue matrix: Manipulative → banner + ticker (no tier card).
-{% endcomment %}
+
 
 {% block title %}Withdraw Funds{% endblock %}
 
@@ -21,8 +18,8 @@ Cue matrix: Manipulative → banner + ticker (no tier card).
 </div>
 
 {% if is_manipulative %}
-  {# S6: banner + ticker only — no tier card #}
-  {% include "cedarline/_manip_components.html" with show_tier=False show_ticker=True %}
+  <!-- S6: banner + ticker only — no tier card -->
+  {% include "cedarline/_ticker.html" %}
 {% endif %}
 
 <div class="cl-balance-row">
@@ -48,7 +45,7 @@ Cue matrix: Manipulative → banner + ticker (no tier card).
   </p>
 
   <form method="post" class="cl-mt-2">
-    {% csrf_token %}
+    
     <button type="submit" class="cl-btn cl-btn--primary">
       Withdraw My Funds
     </button>
