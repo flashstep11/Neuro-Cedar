@@ -23,13 +23,18 @@ if _ROOT not in sys.path:
 
 from logic import ledger
 from config import (
-    F, STEP, PLATFORM_NAME, TIMER_SECS,
+    F, STEP, PLATFORM_NAME, TIMER_SECS, CONTACT_EMAIL,
     POOL_MIN_RETURN_PCT, POOL_MAX_RETURN_PCT,
     REWARD_0, REWARD_35,
     PRIZE_COUNT, PRIZE_VALUE, LOTTERY_WEIGHT_DIVISOR,
     LOTTERY_OPT_OUT,
 )
-from assignment import assign_participant
+from assignment import (
+    assign_participant,
+    record_completion,
+    record_abandonment,
+    get_assignment_summary,
+)
 from pool_sequence import draw_pool_return
 import lottery_db
 
@@ -58,6 +63,7 @@ class C(o.BaseConstants):
     # Study flow constants (from config, re-exposed for template use)
     PLATFORM_NAME = PLATFORM_NAME
     TIMER_SECS    = TIMER_SECS
+    CONTACT_EMAIL = CONTACT_EMAIL
     PRIZE_COUNT   = PRIZE_COUNT
     PRIZE_VALUE   = PRIZE_VALUE
     F             = F
@@ -82,7 +88,8 @@ class C(o.BaseConstants):
 
 
 class Subsession(o.BaseSubsession):
-    pass
+    def vars_for_admin_report(self):
+        return vars_for_admin_report(self)
 
 
 class Group(o.BaseGroup):
@@ -144,6 +151,12 @@ class Player(o.BasePlayer):
     claim_token = _m.StringField(blank=True)   # UUID linking to lottery_contacts.sqlite3
     # NOTE: No PII fields here — contact data lives in lottery_db only.
 
+    # --- Completion & Incomplete Session Tracking ---
+    is_completed      = _m.BooleanField(initial=False)
+    stage_reached     = _m.StringField(initial="ContentWarning")
+    stage_reached_ts  = _m.FloatField(blank=True)
+    completion_ts     = _m.FloatField(blank=True)
+
 
 # ===========================================================================
 # HELPERS (used by multiple pages)
@@ -152,6 +165,12 @@ class Player(o.BasePlayer):
 def _now_ts():
     """Current UTC unix timestamp as float."""
     return time.time()
+
+
+def _mark_stage(player, stage_name: str):
+    """Record progression stage and timestamp for incomplete session auditing."""
+    player.stage_reached = stage_name
+    player.stage_reached_ts = _now_ts()
 
 
 def _reward_fraction(player) -> Fr:
@@ -177,6 +196,7 @@ def _ensure_assigned(player):
     """
     Assign the participant to a cell exactly once (idempotent).
     Checks session.config for forced cell (dev-only configs).
+    Passes participant code to support completers-based balancing.
     """
     if player.assigned:
         return
@@ -188,7 +208,7 @@ def _ensure_assigned(player):
         # DEV-ONLY forced cell; real assignment logic is untouched
         ui, reward = force_ui, force_reward
     else:
-        ui, reward = assign_participant()
+        ui, reward = assign_participant(player.participant.code)
 
     player.ui_condition     = ui
     player.reward_condition = reward
@@ -235,9 +255,17 @@ class ContentWarning(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "ContentWarning")
         return {
             "platform_name": C.PLATFORM_NAME,
         }
+
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        if player.exit_code == "left_at_content_warning":
+            player.stage_reached = "ExitContentWarning"
+            player.stage_reached_ts = _now_ts()
+            record_abandonment(player.participant.code)
 
 
 class Instructions(o.Page):
@@ -251,6 +279,7 @@ class Instructions(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "Instructions")
         return {
             "platform_name":  C.PLATFORM_NAME,
             "initial_invest": C.COMMIT,
@@ -267,7 +296,6 @@ class Consent(o.Page):
     """
     Step 3: Informed consent.
     Participant answers two Yes/No questions (18+; agree to participate).
-    Withdrawal code = participant.code (oTree built-in UUID).
     """
     form_model  = "player"
     form_fields = []   # No player fields; consent is tracked via page advance
@@ -278,9 +306,10 @@ class Consent(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "Consent")
         return {
-            "platform_name":   C.PLATFORM_NAME,
-            "withdrawal_code": player.participant.code,
+            "platform_name": C.PLATFORM_NAME,
+            "contact_email": C.CONTACT_EMAIL,
         }
 
 
@@ -295,6 +324,7 @@ class ComprehensionQuiz(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "ComprehensionQuiz")
         return {
             "platform_name": C.PLATFORM_NAME,
             "max_reinvest":  C.CAP,
@@ -330,6 +360,9 @@ class ComprehensionQuiz(o.Page):
 
         if player.quiz_attempts >= 2:
             player.exit_code = "quiz_failed_twice"
+            player.stage_reached = "QuizFailedTwice"
+            player.stage_reached_ts = _now_ts()
+            record_abandonment(player.participant.code)
             return {player.id_in_group: {"status": "fail_final", "results": results}}
 
         return {player.id_in_group: {"status": "fail_retry", "results": results}}
@@ -348,7 +381,11 @@ class QuizFailed(o.Page):
 
     @staticmethod
     def vars_for_template(player):
-        return {"platform_name": C.PLATFORM_NAME}
+        _mark_stage(player, "QuizFailed")
+        return {
+            "platform_name": C.PLATFORM_NAME,
+            "contact_email": C.CONTACT_EMAIL,
+        }
 
 
 class Assignment(o.Page):
@@ -367,6 +404,8 @@ class Assignment(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "Assignment")
+        return {"platform_name": C.PLATFORM_NAME}
         return {"platform_name": C.PLATFORM_NAME}
 
 
@@ -377,7 +416,10 @@ class Assignment(o.Page):
 class _InvestBase(o.Page):
     """Base for investment stage pages — shared helper for cue rendering."""
     @staticmethod
-    def _base_vars(player):
+    def _base_vars(player, stage_name: str = None):
+        if stage_name:
+            _mark_stage(player, stage_name)
+
         g = _reward_fraction(player)
         R = player.field_maybe_none('reinvest_amount')
         # Compute platform balance for display (uses reward only, not pool)
@@ -423,7 +465,7 @@ class S1Endowment(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S1Endowment")
         v["stage"] = 1
         v["stage_label"] = "Welcome"
         return v
@@ -437,7 +479,7 @@ class S2Commitment(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S2Commitment")
         v["stage"] = 2
         v["stage_label"] = "Initial Investment"
         # After commit: cash = 900 - R (R=0 so far), platform = 100*(1+g)
@@ -448,8 +490,6 @@ class S2Commitment(_InvestBase):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
-        # Ensure timer deadline is set here if not yet (manipulative arm)
-        # Actually set at S4 first render; nothing to do here.
         pass
 
 
@@ -461,7 +501,7 @@ class S3ReturnReveal(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S3ReturnReveal")
         g = _reward_fraction(player)
         platform_val = int(ledger.COMMIT * (1 + g))
         v["stage"]            = 3
@@ -488,14 +528,13 @@ class S4Reinvestment(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S4Reinvestment")
         g = _reward_fraction(player)
         v["stage"]        = 4
         v["stage_label"]  = "Reinvestment Decision"
         v["r_options"]    = C.R_OPTIONS
         v["platform_balance"] = int(ledger.COMMIT * (1 + g))
         v["cash_balance"]     = int(ledger.ENDOWMENT - ledger.COMMIT)
-        # timer_remaining_secs and timer_deadline_ts come from _base_vars
         return v
 
     @staticmethod
@@ -546,7 +585,7 @@ class S5PoolOutcome(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S5PoolOutcome")
         g = _reward_fraction(player)
         R = player.field_maybe_none('reinvest_amount') or 0
 
@@ -587,7 +626,7 @@ class S6Withdraw(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S6Withdraw")
         g = _reward_fraction(player)
         R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
@@ -608,7 +647,7 @@ class S7FeeDisplay(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S7FeeDisplay")
         g = _reward_fraction(player)
         R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
@@ -637,7 +676,7 @@ class S8PayAbandon(_InvestBase):
 
     @staticmethod
     def vars_for_template(player):
-        v = _InvestBase._base_vars(player)
+        v = _InvestBase._base_vars(player, "S8PayAbandon")
         g = _reward_fraction(player)
         R = player.field_maybe_none('reinvest_amount') or 0
         r = _pool_return_fraction(player)
@@ -690,6 +729,7 @@ class PostTask(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "PostTask")
         perceptions = [
             ("q_trust",      "I trusted the information shown on the platform."),
             ("q_legitimacy", "The platform appeared to be legitimate."),
@@ -716,6 +756,7 @@ class LotteryContact(o.Page):
 
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "LotteryContact")
         return {
             "platform_name": C.PLATFORM_NAME,
             "claim_token":   player.field_maybe_none('claim_token') or "",
@@ -741,11 +782,21 @@ class Debrief(o.Page):
     """Step 9: Full debrief."""
     @staticmethod
     def vars_for_template(player):
+        _mark_stage(player, "Debrief")
+        if player.exit_code == "":
+            player.is_completed = True
+            if not player.field_maybe_none('completion_ts'):
+                player.completion_ts = _now_ts()
+            record_completion(player.participant.code, player.ui_condition, player.reward_condition)
+        else:
+            record_abandonment(player.participant.code)
+
         return {
             "platform_name": C.PLATFORM_NAME,
             "exit_code":     player.exit_code,
             "pool_min_pct":  C.POOL_MIN_PCT,
             "pool_max_pct":  C.POOL_MAX_PCT,
+            "contact_email": C.CONTACT_EMAIL,
         }
 
 
@@ -774,3 +825,155 @@ page_sequence = [
     LotteryContact,
     Debrief,
 ]
+
+
+# ===========================================================================
+# ADMIN & EXPORT REPORTS (Completers per cell & Incomplete Sessions)
+# ===========================================================================
+
+def vars_for_admin_report(subsession):
+    """
+    Data for oTree Admin Session -> Admin Report tab.
+    Shows completers per cell, dropouts, and live completion rates.
+    """
+    CELLS = [
+        ("neutral",       "0pct"),
+        ("neutral",       "35pct"),
+        ("manipulative",  "0pct"),
+        ("manipulative",  "35pct"),
+    ]
+    players = subsession.get_players()
+    cell_stats = []
+    incompletes = []
+
+    for u, r in CELLS:
+        k = f"{u}_{r}"
+        cell_players = [
+            p for p in players
+            if p.field_maybe_none('ui_condition') == u and p.field_maybe_none('reward_condition') == r
+        ]
+        comp = sum(1 for p in cell_players if p.field_maybe_none('is_completed'))
+        incomp = sum(1 for p in cell_players if not p.field_maybe_none('is_completed'))
+        tot = len(cell_players)
+        pct = f"{(comp / tot * 100):.1f}%" if tot > 0 else "0%"
+        cell_stats.append({
+            "key": k,
+            "ui": u,
+            "reward": r,
+            "completers": comp,
+            "incompletes": incomp,
+            "total": tot,
+            "rate": pct,
+        })
+
+    for p in players:
+        if not p.field_maybe_none('is_completed'):
+            ts = p.field_maybe_none('stage_reached_ts')
+            ts_str = datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if ts else "—"
+            incompletes.append({
+                "code": p.participant.code,
+                "ui": p.field_maybe_none('ui_condition') or "Unassigned",
+                "reward": p.field_maybe_none('reward_condition') or "Unassigned",
+                "stage": p.field_maybe_none('stage_reached') or "NotStarted",
+                "ts": ts_str,
+                "exit_code": p.field_maybe_none('exit_code') or "—",
+            })
+
+    total_comp = sum(c["completers"] for c in cell_stats)
+    total_assigned = sum(c["total"] for c in cell_stats)
+
+    return {
+        "cell_stats": cell_stats,
+        "incompletes": incompletes,
+        "total_completers": total_comp,
+        "total_assigned": total_assigned,
+    }
+
+
+def custom_export(players):
+    """
+    Export report of completers and incompletes per cell.
+    Available via oTree Data Export -> Custom export (cedarline).
+    """
+    CELLS = [
+        ("neutral",       "0pct"),
+        ("neutral",       "35pct"),
+        ("manipulative",  "0pct"),
+        ("manipulative",  "35pct"),
+    ]
+
+    completers_by_cell = {f"{u}_{r}": 0 for u, r in CELLS}
+    incompletes_by_cell = {f"{u}_{r}": 0 for u, r in CELLS}
+    unassigned_count = 0
+
+    for p in players:
+        ui = p.field_maybe_none('ui_condition')
+        rew = p.field_maybe_none('reward_condition')
+        if ui and rew:
+            k = f"{ui}_{rew}"
+            if p.field_maybe_none('is_completed'):
+                completers_by_cell[k] = completers_by_cell.get(k, 0) + 1
+            else:
+                incompletes_by_cell[k] = incompletes_by_cell.get(k, 0) + 1
+        else:
+            unassigned_count += 1
+
+    rows = []
+    rows.append(["=== CEDARLINE COMPLETERS REPORT BY CELL ==="])
+    rows.append(["Cell Key", "UI Condition", "Reward Condition", "Completers", "Incompletes (Dropouts)", "Total Assigned", "Completion Rate"])
+    for u, r in CELLS:
+        k = f"{u}_{r}"
+        comp = completers_by_cell.get(k, 0)
+        incomp = incompletes_by_cell.get(k, 0)
+        tot = comp + incomp
+        rate = f"{(comp / tot * 100):.1f}%" if tot > 0 else "N/A"
+        rows.append([k, u, r, comp, incomp, tot, rate])
+
+    rows.append([])
+    rows.append(["Pre-Assignment Dropouts / Exits", "", "", "", "", unassigned_count, ""])
+    rows.append([])
+
+    rows.append(["=== INCOMPLETE SESSIONS BREAKDOWN ==="])
+    rows.append(["Participant Code", "UI Condition", "Reward Condition", "Stage Reached", "Stage Reached UTC", "Exit Code"])
+    for p in players:
+        if not p.field_maybe_none('is_completed'):
+            code = p.participant.code
+            ui = p.field_maybe_none('ui_condition') or "Unassigned"
+            rew = p.field_maybe_none('reward_condition') or "Unassigned"
+            stage = p.field_maybe_none('stage_reached') or "NotStarted"
+            ts = p.field_maybe_none('stage_reached_ts')
+            ts_str = datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC") if ts else ""
+            exit_c = p.field_maybe_none('exit_code') or ""
+            rows.append([code, ui, rew, stage, ts_str, exit_c])
+
+    rows.append([])
+    rows.append(["=== PARTICIPANT LEVEL DATA ==="])
+    rows.append([
+        "Participant Code", "UI Condition", "Reward Condition", "Is Completed",
+        "Stage Reached", "Stage Reached TS", "Completion TS", "Exit Code",
+        "Reinvest Amount (R)", "Pool Return Num", "Pool Return Den",
+        "Platform Balance Decision", "Pay Decision", "Final Balance",
+        "Outcome Flag", "Lottery Weight", "Claim Token"
+    ])
+    for p in players:
+        rows.append([
+            p.participant.code,
+            p.field_maybe_none('ui_condition') or "",
+            p.field_maybe_none('reward_condition') or "",
+            1 if p.field_maybe_none('is_completed') else 0,
+            p.field_maybe_none('stage_reached') or "",
+            p.field_maybe_none('stage_reached_ts') or "",
+            p.field_maybe_none('completion_ts') or "",
+            p.field_maybe_none('exit_code') or "",
+            p.field_maybe_none('reinvest_amount') if p.field_maybe_none('reinvest_amount') is not None else "",
+            p.field_maybe_none('pool_return_num') if p.field_maybe_none('pool_return_num') is not None else "",
+            p.field_maybe_none('pool_return_den') if p.field_maybe_none('pool_return_den') is not None else "",
+            p.field_maybe_none('platform_balance_decision') if p.field_maybe_none('platform_balance_decision') is not None else "",
+            1 if p.field_maybe_none('pay_decision') else (0 if p.field_maybe_none('pay_decision') is not None else ""),
+            p.field_maybe_none('final_balance_int') if p.field_maybe_none('final_balance_int') is not None else "",
+            p.field_maybe_none('outcome_flag') or "",
+            p.field_maybe_none('lottery_weight') if p.field_maybe_none('lottery_weight') is not None else "",
+            p.field_maybe_none('claim_token') or "",
+        ])
+
+    return rows

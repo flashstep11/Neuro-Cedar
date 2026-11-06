@@ -35,6 +35,7 @@ POOL_MAX_RETURN_PCT = int(max(r for r, _ in ACTIVE_POOL) * 100)   # +40
 # ---------------------------------------------------------------------------
 PLATFORM_NAME = "Cedarline"      # fictional platform name
 TIMER_SECS    = 60               # urgency-banner countdown (non-binding)
+CONTACT_EMAIL = "flashstep11@gmail.com"
 
 # Reward conditions (guarantee amounts)
 REWARD_0  = Fr(0)                # 0% apparent return

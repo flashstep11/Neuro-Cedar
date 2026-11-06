@@ -83,13 +83,22 @@ All monetary arithmetic uses `logic/ledger.py` with exact `Fraction` values.
 Amounts are converted to `int`/`float` **only** at the oTree field boundary.
 No arithmetic in templates or pages.
 
-### Assignment (concurrency)
-Balanced 2×2 block-shuffle stored in `assignment_state.json` under a
-file-level OS lock (`msvcrt` on Windows, `fcntl` on POSIX).
+### Completer-Based Cell Balancing & Assignment
+Assignment balances across the 4 cells (Neutral 0%, Neutral 35%, Manipulative 0%, Manipulative 35%) based on **completers**:
 
-**Safe for:** single-process Uvicorn (default oTree production setup).  
-**Not safe for:** multi-worker gunicorn across multiple machines. If you
-scale horizontally, replace with a Postgres sequence or Redis counter.
+1. **State Tracking**: `assignment_state.json` tracks confirmed `completers` per cell and `in_flight` assignments with UTC timestamps, synchronized via an OS file-level lock (`msvcrt` on Windows, `fcntl` on POSIX).
+2. **Allocation Algorithm (Dynamic Minimization)**:
+   - When a participant reaches the assignment stage, expired in-flight entries (> 30 minutes old) are pruned.
+   - For each cell, effective load is calculated as `effective = completers + active_in_flight`.
+   - The cell with the lowest effective load is chosen. If tied, ties are broken via pre-generated pseudo-random block shuffle order.
+   - The participant is registered as in-flight for that cell.
+3. **Completion & Abandonment Callbacks**:
+   - At the `Debrief` stage, `record_completion(participant_code)` promotes the in-flight reservation to a confirmed completer.
+   - If a participant exits at `ContentWarning` or fails the quiz twice, `record_abandonment(participant_code)` frees the reservation immediately.
+4. **Tradeoffs**:
+   - *Completer Balance vs Fixed Sequences*: Pure pre-randomized block shuffle ensures exact assignment balance at entry, but differential attrition (e.g., participants dropping out at S4 or S7) causes cell imbalances at analysis time. Completer-weighted dynamic minimization prioritizes equal N in final analyzed datasets.
+   - *In-Flight Timeout Window (30 min)*: Balances slot availability against slow participants. 30 minutes accommodates slow reading while ensuring dropouts do not starve a cell.
+   - *Concurrency Scope*: OS file locking is atomic and crash-safe for single-process Uvicorn (standard oTree production). For horizontal scaling across multiple servers or worker processes, migrate state to a Redis atomic transaction or Postgres row lock.
 
 ### Pool outcomes
 Pre-generated per-condition shuffled blocks in `pool_sequences.json`.
@@ -204,10 +213,7 @@ Final balance, flags, and lottery weight are verified against
 
 Fill in every item below before any participant sees the app:
 
-- [ ] **Study deadline** — update `[VERIFY: insert study deadline here]` in `Consent.html`
-- [ ] **Researcher contact** — update `[VERIFY: insert researcher contact email here]` in `Consent.html`
-- [ ] **Withdrawal deadline** — update `[VERIFY: insert date]` in `Consent.html`
-- [ ] **Lottery results deadline** — update `[VERIFY: insert deadline/date]` in `Debrief.html`
+- [ ] **Contact email** — configured as `CONTACT_EMAIL = "flashstep11@gmail.com"` in `config.py` (referenced across Consent, Debrief, and QuizFailed pages)
 - [ ] **Support resources** — verify SEBI URL and cyber crime portal URL in `Debrief.html`; do NOT invent phone numbers
 - [ ] **Financial literacy scale** — replace TODO placeholder in `PostTask.html` with validated items and confirm permission to use
 - [ ] **DOSPERT items** — replace TODO placeholder in `PostTask.html` with validated wording and confirm permissions

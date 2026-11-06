@@ -1,0 +1,90 @@
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <h4 class="mb-0">Cedarline Study — Completers per Cell Report</h4>
+  </div>
+  <div class="card-body">
+    <div class="row text-center mb-3">
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border">
+          <h6 class="text-muted">Total Completers</h6>
+          <h2 class="text-success mb-0">{{ total_completers }}</h2>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border">
+          <h6 class="text-muted">Total Assigned</h6>
+          <h2 class="text-dark mb-0">{{ total_assigned }}</h2>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border">
+          <h6 class="text-muted">Incomplete Sessions</h6>
+          <h2 class="text-warning mb-0">{{ incompletes|length }}</h2>
+        </div>
+      </div>
+    </div>
+
+    <h5>Cell Balance (Completers Target)</h5>
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>Cell</th>
+          <th>UI Condition</th>
+          <th>Reward Condition</th>
+          <th class="text-center text-success">Completers</th>
+          <th class="text-center text-warning">Incompletes (Dropouts)</th>
+          <th class="text-center">Total Assigned</th>
+          <th class="text-center">Completion Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in cell_stats %}
+        <tr>
+          <td><code>{{ row.key }}</code></td>
+          <td><span class="badge {% if row.ui == 'manipulative' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ row.ui }}</span></td>
+          <td>{{ row.reward }}</td>
+          <td class="text-center font-weight-bold text-success">{{ row.completers }}</td>
+          <td class="text-center text-warning">{{ row.incompletes }}</td>
+          <td class="text-center">{{ row.total }}</td>
+          <td class="text-center">{{ row.rate }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h5 class="mt-4">Incomplete Sessions Breakdown</h5>
+    {% if incompletes %}
+    <table class="table table-sm table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>Participant Code</th>
+          <th>UI Arm</th>
+          <th>Reward Arm</th>
+          <th>Stage Reached (Drop Point)</th>
+          <th>Timestamp (UTC)</th>
+          <th>Exit Reason / Code</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in incompletes %}
+        <tr>
+          <td><code>{{ item.code }}</code></td>
+          <td>{{ item.ui }}</td>
+          <td>{{ item.reward }}</td>
+          <td><span class="badge bg-danger">{{ item.stage }}</span></td>
+          <td>{{ item.ts }}</td>
+          <td>{{ item.exit_code }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No incomplete sessions recorded so far.</p>
+    {% endif %}
+
+    <div class="mt-3 p-3 bg-light rounded border small text-muted">
+      <strong>Completer-Based Balancing Note:</strong> Incoming participants are automatically routed to the cell with the fewest completers (accounting for active in-flight sessions), guaranteeing statistical balance among completed sessions.
+    </div>
+  </div>
+</div>
+

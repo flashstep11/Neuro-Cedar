@@ -156,3 +156,8 @@ class PlayerBot(Bot):
         # Debrief
         yield Submission(Debrief, {}, check_html=False)
 
+        # ---- Verify completion tracking ----
+        assert self.player.is_completed == True, "Player should be marked completed after Debrief"
+        assert self.player.stage_reached == "Debrief", "Player stage_reached should be Debrief"
+        assert self.player.completion_ts is not None, "completion_ts should be set"
+
