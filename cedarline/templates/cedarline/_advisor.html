@@ -1,0 +1,15 @@
+{# Manipulative arm only: scripted "account manager" chat bubble.
+   Copy comes from ADVISOR in __init__.py; identical in both reward arms and
+   never mentions returns, amounts or percentages. #}
+{% if advisor_msg %}
+<div class="cl-advisor" aria-hidden="true">
+  <div class="cl-advisor__avatar">N<span class="cl-advisor__online"></span></div>
+  <div class="cl-advisor__body">
+    <div class="cl-advisor__meta">Neha &middot; Account Manager <span class="cl-advisor__tag">Online</span></div>
+    <div class="cl-advisor__bubble">
+      <span class="cl-advisor__typing"><i></i><i></i><i></i></span>
+      <span class="cl-advisor__text">{{ advisor_msg }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}

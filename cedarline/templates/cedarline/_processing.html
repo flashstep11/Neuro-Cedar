@@ -1,0 +1,32 @@
+{# Short "processing" sequence before a fee screen appears. Same steps and
+   timing in all four cells. Added by JS only: without JS the page simply
+   shows straight away. Expects `step` (1 or 2) in the context. #}
+<script>
+(function() {
+  var main = document.querySelector('.cl-main');
+  if (!main) return;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var steps = {% if step == 2 %}['Submitting your withdrawal', 'Compliance review', 'Account verification check']{% else %}['Verifying your account', 'Calculating your platform balance', 'Running withdrawal checks']{% endif %};
+  var stepMs = reduce ? 300 : 850;
+
+  var ov = document.createElement('div');
+  ov.className = 'cl-processing';
+  ov.setAttribute('role', 'status');
+  ov.innerHTML = '<div class="cl-processing__spinner" aria-hidden="true"></div>' +
+    '<div class="cl-processing__title">Processing your withdrawal…</div>' +
+    '<ul class="cl-processing__steps">' + steps.map(function(s) { return '<li>' + s + '</li>'; }).join('') + '</ul>';
+  main.classList.add('cl-main--processing');
+  main.appendChild(ov);
+  window.clProcessingUntil = performance.now() + steps.length * stepMs + 250;
+
+  ov.querySelectorAll('li').forEach(function(li, i) {
+    setTimeout(function() { li.classList.add('is-active'); }, i * stepMs);
+    setTimeout(function() { li.classList.remove('is-active'); li.classList.add('is-done'); }, (i + 1) * stepMs);
+  });
+  setTimeout(function() {
+    ov.classList.add('cl-processing--out');
+    main.classList.remove('cl-main--processing');
+    setTimeout(function() { ov.remove(); }, 350);
+  }, steps.length * stepMs + 250);
+})();
+</script>

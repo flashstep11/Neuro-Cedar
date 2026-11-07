@@ -1,0 +1,34 @@
+{% extends "cedarline/_invest_base.html" %}
+{# End of the withdrawal ladder. Shown after the decisions, so it can state
+   the final balance plainly. #}
+
+{% block title %}Withdrawal Result{% endblock %}
+
+{% block content %}
+{% include "cedarline/_progress.html" %}
+
+<div class="cl-card cl-outcome {% if released %}cl-outcome--ok{% else %}cl-outcome--stop{% endif %}">
+  <div class="cl-outcome__icon" aria-hidden="true">{% if released %}&#10003;{% else %}&times;{% endif %}</div>
+  {% if released %}
+    <h2>Funds released</h2>
+    <p>Your platform balance of <strong>Rs {{ platform_balance }}</strong> has been released to your account (simulated).</p>
+  {% else %}
+    <h2>Withdrawal cancelled</h2>
+    <p>
+      You abandoned the withdrawal {% if stopped_at == 2 %}at the verification step{% else %}at the processing fee{% endif %}.
+      Your platform balance of <strong>Rs {{ platform_balance }}</strong> was forfeited.
+    </p>
+  {% endif %}
+  <div class="cl-outcome__rows">
+    <div><span>Fees paid</span><strong>Rs {{ fees_paid }}</strong></div>
+    <div><span>Final virtual balance</span><strong>Rs {{ final_balance }}</strong></div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <p>This is the end of the investment task. Next there is one more question and a short questionnaire.</p>
+  <form method="post" class="cl-mt-2">
+    <button type="submit" class="cl-btn cl-btn--primary">Continue →</button>
+  </form>
+</div>
+{% endblock %}

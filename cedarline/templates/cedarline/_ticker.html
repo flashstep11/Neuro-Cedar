@@ -1,67 +1,93 @@
-<!-- --- Activity ticker / social proof --- -->
-<div class="cl-ticker" aria-live="polite" aria-label="Recent platform activity">
-  <div class="cl-ticker__msg cl-ticker__toast" id="cl-ticker-msg">
-    Aarav K. just reinvested
+{# ==========================================================================
+   Social proof (manipulative arm only). Fabricated, identical in both
+   reward arms. Messages never mention returns, profits, percentages,
+   amounts, or 35% (guide §6).
+   1) In-page "live activity" card with a drifting investor counter.
+   2) Slide-in toast pop-ups (bottom-left), the classic fraud-app pattern.
+      Toasts are pointer-events:none so they can never block a button.
+   ========================================================================== #}
+<div class="cl-ticker" aria-hidden="true">
+  <div class="cl-ticker__head">
+    <span class="cl-live-badge"><span class="cl-live-dot"></span>LIVE</span>
+    <span class="cl-ticker__title">Platform activity</span>
   </div>
-  <div class="cl-ticker__counter" id="cl-ticker-counter">
-    1,284 investors active now
+  <div class="cl-ticker__counter">
+    <span class="cl-ticker__big" data-cl-live-count>1,284</span>
+    <span class="cl-ticker__label">investors active now</span>
   </div>
+  <div class="cl-ticker__sub">&#9650; 37 joined in the last hour &middot; 9 of 10 members reinvest</div>
+  <div class="cl-ticker__msg" id="cl-ticker-msg">Aarav K. from Pune just reinvested</div>
 </div>
+
+{% if not no_toasts %}<div class="cl-toast-stack" id="cl-toast-stack" aria-hidden="true"></div>{% endif %}
 
 <script>
 (function() {
-  // Message pool — fictional names, no returns, profits, percentages, or 35%
-  const MESSAGES = [
-    "Aarav K. just reinvested",
-    "Meera S. upgraded to Silver",
-    "Riya P. joined Cedarline",
-    "Vikram T. completed a withdrawal",
-    "Ananya G. started investing",
-    "Kabir M. renewed their account",
-    "Priya L. joined the platform",
-    "Rohan D. reinvested today",
-    "Sneha R. is now active",
-    "Arjun B. verified their account",
+  if (window.__clTickerStarted) return;   // guard against double include
+  window.__clTickerStarted = true;
+
+  var PEOPLE = [
+    ["Aarav K.",  "Pune",       "just reinvested"],
+    ["Meera S.",  "Bengaluru",  "upgraded to Gold"],
+    ["Riya P.",   "Hyderabad",  "joined Cedarline"],
+    ["Vikram T.", "Delhi",      "reinvested again"],
+    ["Ananya G.", "Chennai",    "started investing"],
+    ["Kabir M.",  "Mumbai",     "upgraded to Silver"],
+    ["Priya L.",  "Kolkata",    "joined the platform"],
+    ["Rohan D.",  "Jaipur",     "reinvested today"],
+    ["Sneha R.",  "Kochi",      "unlocked a new tier"],
+    ["Arjun B.",  "Ahmedabad",  "verified their account"],
+    ["Ishaan V.", "Lucknow",    "just reinvested"],
+    ["Diya N.",   "Indore",     "upgraded to Gold"]
   ];
+  var COLORS = ["#f5b83d", "#22e3a0", "#7c8cff", "#ff6b9a", "#3dd5f5"];
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  let msgIdx = Math.floor(Math.random() * MESSAGES.length);
-  let counter = 1284;
+  var idx = Math.floor(Math.random() * PEOPLE.length);
+  var counter = 1284;
 
-  function nextMessage() {
-    msgIdx = (msgIdx + 1) % MESSAGES.length;
-    const el = document.getElementById('cl-ticker-msg');
-    if (!el) return;
-    el.classList.remove('cl-ticker__toast');
-    // Force reflow to restart animation
-    void el.offsetWidth;
-    el.textContent = MESSAGES[msgIdx];
-    el.classList.add('cl-ticker__toast');
+  function initials(name) {
+    return name.split(' ').map(function(p) { return p[0]; }).join('').slice(0, 2);
   }
 
-  function driftCounter() {
-    // Slight drift ±2
-    counter += (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * 3);
-    counter = Math.max(1250, Math.min(1320, counter));
-    const el = document.getElementById('cl-ticker-counter');
-    if (el) el.textContent = counter.toLocaleString('en-IN') + ' investors active now';
+  function showToast(p) {
+    var stack = document.getElementById('cl-toast-stack');
+    if (!stack) return;
+    var t = document.createElement('div');
+    t.className = 'cl-toast' + (reduce ? ' cl-toast--static' : '');
+    var c = COLORS[Math.floor(Math.random() * COLORS.length)];
+    t.innerHTML =
+      '<div class="cl-toast__avatar" style="background:' + c + '">' + initials(p[0]) + '</div>' +
+      '<div class="cl-toast__body"><div class="cl-toast__name">' + p[0] +
+      ' <span class="cl-toast__city">&middot; ' + p[1] + '</span></div>' +
+      '<div class="cl-toast__action">' + p[2] + ' <span class="cl-toast__tick">&#10003;</span></div>' +
+      '<div class="cl-toast__time">just now</div></div>';
+    stack.appendChild(t);
+    setTimeout(function() { t.classList.add('cl-toast--out'); }, 4200);
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 4800);
   }
 
-  // Rotate message every 4–6 seconds
-  function scheduleNext() {
-    const delay = 4000 + Math.random() * 2000;
-    setTimeout(function() {
-      // Check prefers-reduced-motion — still rotate text, just no animation
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const el = document.getElementById('cl-ticker-msg');
-        if (el) { el.classList.remove('cl-ticker__toast'); }
-      }
-      nextMessage();
-      driftCounter();
-      scheduleNext();
-    }, delay);
+  function step() {
+    idx = (idx + 1) % PEOPLE.length;
+    var p = PEOPLE[idx];
+    var msg = document.getElementById('cl-ticker-msg');
+    if (msg) {
+      msg.classList.remove('cl-ticker__msg--in');
+      void msg.offsetWidth;
+      msg.textContent = p[0] + ' from ' + p[1] + ' ' + p[2];
+      msg.classList.add('cl-ticker__msg--in');
+    }
+    counter += Math.floor(Math.random() * 5) - 1;          // gentle upward drift
+    counter = Math.max(1250, Math.min(1340, counter));
+    document.querySelectorAll('[data-cl-live-count]').forEach(function(el) {
+      el.textContent = counter.toLocaleString('en-IN');
+    });
+    showToast(p);
   }
 
-  if (document.getElementById('cl-ticker-msg')) scheduleNext();
+  function schedule() {
+    setTimeout(function() { step(); schedule(); }, 5000 + Math.random() * 3000);
+  }
+  setTimeout(function() { step(); schedule(); }, 1500);
 })();
 </script>
-

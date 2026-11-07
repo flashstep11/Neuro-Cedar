@@ -82,6 +82,17 @@
     <p class="text-muted">No incomplete sessions recorded so far.</p>
     {% endif %}
 
+    <h5 class="mt-4">Pool outcome sequence usage</h5>
+    <p class="small text-muted">Pre-generated, never replenished. If a queue nears its length, stop and update the protocol.</p>
+    <table class="table table-sm table-bordered">
+      <thead><tr><th>Queue (cell | round)</th><th>Used</th><th>Length</th></tr></thead>
+      <tbody>
+        {% for q in pool_usage %}
+        <tr><td>{{ q.queue }}</td><td>{{ q.used }}</td><td>{{ q.length }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
     <div class="mt-3 p-3 bg-light rounded border small text-muted">
       <strong>Completer-Based Balancing Note:</strong> Incoming participants are automatically routed to the cell with the fewest completers (accounting for active in-flight sessions), guaranteeing statistical balance among completed sessions.
     </div>

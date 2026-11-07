@@ -1,0 +1,42 @@
+{% extends "cedarline/_invest_base.html" %}
+{# Round 2 outcome (only shown if R2 > 0). The return applies to R2 only. #}
+
+{% block title %}Platform Update{% endblock %}
+
+{% block content %}
+{% include "cedarline/_progress.html" %}
+
+{% if is_manipulative %}
+  {% include "cedarline/_ticker.html" %}
+{% endif %}
+
+<div class="cl-card cl-card--accent">
+  <h2>Platform Update</h2>
+  <p>{{ platform_name }} has applied the pool return to the amount you just added.</p>
+</div>
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+    <div class="cl-balance-card__sub">After reinvestment</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount cl-balance-card__amount--large"
+         data-countup="{{ platform_balance }}" data-from="{{ platform_before }}">Rs {{ platform_balance }}</div>
+    <div class="cl-balance-card__sub">{{ pool_return_str }} on the added amount</div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <p>
+    You added <strong>Rs {{ reinvest2_amount }}</strong>. The platform applied
+    <strong>{{ pool_return_str }}</strong> to that amount.
+  </p>
+  <p>Your total platform balance is now <strong>Rs {{ platform_balance }}</strong>.</p>
+  <form method="post" class="cl-mt-2">
+    <button type="submit" class="cl-btn cl-btn--primary">Continue to Withdrawal →</button>
+  </form>
+</div>
+{% endblock %}

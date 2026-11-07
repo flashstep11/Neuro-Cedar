@@ -1,0 +1,77 @@
+Payoff simulator v2 — two reinvestment rounds, two-step withdrawal fee
+F1 = Rs 200; F2 candidates = [100, 150, 200]; start cash = Rs 900
+Sanity checks and hand-worked examples: PASSED
+
+Zones at the fee stage (share of participants, by platform balance P):
+  Z0  P < F2          paying the 2nd fee loses money even ignoring the 1st (pure escalation)
+  Z1  F2 <= P < F1+F2 each fee looks worth paying, but the whole ladder loses money (trap)
+  Z2  P >= F1+F2      paying both fees is financially better
+  'P<F1' = would already be a net loss at step 1 even if no 2nd fee existed
+
+=== Pool A_EV0   E[r] = +0.000   outcomes ['-30%', '+30%'] ===
+-- F2 = Rs 100   total reinvestment cap = Rs 600
+   uniform       0%: Z0   0.0%  Z1   9.6%  Z2  90.4%  P<F1   2.6% | 35%: Z0   0.0%  Z1   6.4%  Z2  93.6%  P<F1   1.2%
+   single-round  0%: Z0   0.0%  Z1  38.5%  Z2  61.5%  P<F1  19.2% | 35%: Z0   0.0%  Z1  30.8%  Z2  69.2%  P<F1  11.5%
+   moderate      0%: Z0   0.0%  Z1  22.0%  Z2  78.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  12.0%  Z2  88.0%  P<F1   0.0%
+-- F2 = Rs 150   total reinvestment cap = Rs 550
+   uniform       0%: Z0   1.4%  Z1  17.1%  Z2  81.4%  P<F1   3.1% | 35%: Z0   0.7%  Z1  13.8%  Z2  85.5%  P<F1   1.4%
+   single-round  0%: Z0  12.5%  Z1  37.5%  Z2  50.0%  P<F1  20.8% | 35%: Z0   8.3%  Z1  37.5%  Z2  54.2%  P<F1  12.5%
+   moderate      0%: Z0   0.0%  Z1  39.0%  Z2  61.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  31.0%  Z2  69.0%  P<F1   0.0%
+-- F2 = Rs 200   total reinvestment cap = Rs 500
+   uniform       0%: Z0   3.7%  Z1  27.6%  Z2  68.6%  P<F1   3.7% | 35%: Z0   1.7%  Z1  22.9%  Z2  75.4%  P<F1   1.7%
+   single-round  0%: Z0  22.7%  Z1  40.9%  Z2  36.4%  P<F1  22.7% | 35%: Z0  13.6%  Z1  45.5%  Z2  40.9%  P<F1  13.6%
+   moderate      0%: Z0   2.0%  Z1  50.0%  Z2  48.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  43.0%  Z2  57.0%  P<F1   0.0%
+
+=== Pool B_EV5   E[r] = +0.050   outcomes ['-30%', '+40%'] ===
+-- F2 = Rs 100   total reinvestment cap = Rs 600
+   uniform       0%: Z0   0.0%  Z1   8.6%  Z2  91.4%  P<F1   2.6% | 35%: Z0   0.0%  Z1   6.4%  Z2  93.6%  P<F1   1.2%
+   single-round  0%: Z0   0.0%  Z1  34.6%  Z2  65.4%  P<F1  19.2% | 35%: Z0   0.0%  Z1  30.8%  Z2  69.2%  P<F1  11.5%
+   moderate      0%: Z0   0.0%  Z1  19.0%  Z2  81.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  12.0%  Z2  88.0%  P<F1   0.0%
+-- F2 = Rs 150   total reinvestment cap = Rs 550
+   uniform       0%: Z0   1.4%  Z1  17.1%  Z2  81.4%  P<F1   3.1% | 35%: Z0   0.7%  Z1  13.8%  Z2  85.5%  P<F1   1.4%
+   single-round  0%: Z0  12.5%  Z1  37.5%  Z2  50.0%  P<F1  20.8% | 35%: Z0   8.3%  Z1  37.5%  Z2  54.2%  P<F1  12.5%
+   moderate      0%: Z0   0.0%  Z1  39.0%  Z2  61.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  31.0%  Z2  69.0%  P<F1   0.0%
+-- F2 = Rs 200   total reinvestment cap = Rs 500
+   uniform       0%: Z0   3.7%  Z1  27.1%  Z2  69.2%  P<F1   3.7% | 35%: Z0   1.7%  Z1  21.1%  Z2  77.2%  P<F1   1.7%
+   single-round  0%: Z0  22.7%  Z1  40.9%  Z2  36.4%  P<F1  22.7% | 35%: Z0  13.6%  Z1  40.9%  Z2  45.5%  P<F1  13.6%
+   moderate      0%: Z0   2.0%  Z1  49.0%  Z2  49.0%  P<F1   2.0% | 35%: Z0   0.0%  Z1  39.0%  Z2  61.0%  P<F1   0.0%
+
+=== Pool C_EV15   E[r] = +0.150   outcomes ['-30%', '+20%', '+50%'] ===
+-- F2 = Rs 100   total reinvestment cap = Rs 600
+   uniform       0%: Z0   0.0%  Z1   7.4%  Z2  92.6%  P<F1   2.3% | 35%: Z0   0.0%  Z1   5.1%  Z2  94.9%  P<F1   1.5%
+   single-round  0%: Z0   0.0%  Z1  32.7%  Z2  67.3%  P<F1  17.3% | 35%: Z0   0.0%  Z1  26.9%  Z2  73.1%  P<F1  13.5%
+   moderate      0%: Z0   0.0%  Z1  15.2%  Z2  84.8%  P<F1   1.0% | 35%: Z0   0.0%  Z1   8.0%  Z2  92.0%  P<F1   0.0%
+-- F2 = Rs 150   total reinvestment cap = Rs 550
+   uniform       0%: Z0   1.1%  Z1  12.8%  Z2  86.1%  P<F1   2.8% | 35%: Z0   0.7%  Z1   9.3%  Z2  90.0%  P<F1   1.8%
+   single-round  0%: Z0  10.4%  Z1  35.4%  Z2  54.2%  P<F1  18.8% | 35%: Z0   8.3%  Z1  29.2%  Z2  62.5%  P<F1  14.6%
+   moderate      0%: Z0   0.0%  Z1  27.3%  Z2  72.8%  P<F1   1.0% | 35%: Z0   0.0%  Z1  18.2%  Z2  81.8%  P<F1   0.0%
+-- F2 = Rs 200   total reinvestment cap = Rs 500
+   uniform       0%: Z0   3.3%  Z1  18.6%  Z2  78.1%  P<F1   3.3% | 35%: Z0   2.1%  Z1  16.0%  Z2  81.9%  P<F1   2.1%
+   single-round  0%: Z0  20.5%  Z1  31.8%  Z2  47.7%  P<F1  20.5% | 35%: Z0  15.9%  Z1  34.1%  Z2  50.0%  P<F1  15.9%
+   moderate      0%: Z0   1.0%  Z1  35.8%  Z2  63.2%  P<F1   1.0% | 35%: Z0   0.0%  Z1  30.8%  Z2  69.2%  P<F1   0.0%
+
+F2 selection (pool C_EV15, uniform profile, averaged over reward arms):
+   F2=100  cap 600  Z0   0.0%  Z1   6.2%  distance 0.338   
+   F2=150  cap 550  Z0   0.9%  Z1  11.0%  distance 0.281   SELECTED (rule v2: cap >= 550)
+   F2=200  cap 500  Z0   2.7%  Z1  17.3%  distance 0.200   rule v1 pick; excluded: cap 500 < 550
+
+Detail for pool C_EV15, F1=200, F2=150, total cap Rs 550:
+  Room left for round 2 after round 1 (R2 max = cap - R1):
+   R1=0->550, R1=50->500, R1=100->450, R1=150->400, R1=200->350, R1=250->300, R1=300->250, R1=350->200, R1=400->150, R1=450->100, R1=500->50, R1=550->0
+  Final balance range by path (all R1, R2, outcomes, both reward arms):
+   abandon at fee 1           Rs 350 .. Rs 900   (lottery weight 35.0 .. 90.0)
+   pay fee 1, abandon fee 2   Rs 150 .. Rs 700   (lottery weight 15.0 .. 70.0)
+   pay both fees              Rs 485 .. Rs 960   (lottery weight 48.5 .. 96.0)
+  E[final] if paying both fees only when P >= F1+F2, by R1 (R2=0), reward 0% / 35%:
+   R1=0      900.0    900.0
+   R1=50     850.0    850.0
+   R1=100    800.0    800.0
+   R1=150    750.0    752.5
+   R1=200    712.5    733.8
+   R1=250    706.2    732.5
+   R1=300    705.0    731.2
+   R1=350    703.8    737.5
+   R1=400    710.0    745.0
+   R1=450    717.5    752.5
+   R1=500    725.0    760.0
+   R1=550    732.5    767.5

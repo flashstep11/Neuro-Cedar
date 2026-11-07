@@ -38,14 +38,14 @@
     <!-- Q2: Maximum reinvestment -->
     <div class="cl-form-group" id="grp-q_max_r">
       <label class="cl-label" for="q_max_r">
-        2. What is the maximum additional amount you can reinvest?
+        2. Across both opportunities together, what is the maximum amount you can reinvest?
       </label>
       <select class="cl-select" id="q_max_r" name="q_max_r" required>
         <option value="" disabled selected>Select an answer</option>
+        <option value="450">Rs 450</option>
         <option value="500">Rs 500</option>
-        <option value="600">Rs 600</option>
         <option value="{{ max_reinvest }}">Rs {{ max_reinvest }}</option>
-        <option value="800">Rs 800</option>
+        <option value="700">Rs 700</option>
         <option value="900">Rs 900</option>
       </select>
       <div class="cl-quiz-feedback" id="fb-q_max_r" style="display:none"></div>
@@ -97,26 +97,11 @@
 
 {% block scripts %}
 <script>
-var liveSocket = null;
-
-// Connect to oTree live WebSocket
-(function() {
-  var wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = wsScheme + '://' + window.location.host + '/live/{{ player.id_in_group }}/{{ player.subsession.session.code }}/';
-  // oTree v5 live_method path
-  try {
-    liveSocket = new WebSocket(wsUrl);
-  } catch(e) {
-    // Fallback: use form submit
-  }
-  if (liveSocket) {
-    liveSocket.onmessage = function(e) {
-      var data = JSON.parse(e.data);
-      var payload = data[{{ player.id_in_group }}] || data;
-      handleQuizResult(payload);
-    };
-  }
-})();
+// Live channel to the page's live_method (see cl_live.js).
+clLive.onMessage(function(data) {
+  var payload = data[{{ player.id_in_group }}] || data;
+  if (payload && payload.status) handleQuizResult(payload);
+});
 
 function handleQuizResult(result) {
   var statusEl = document.getElementById('quiz-global-msg');
@@ -171,12 +156,18 @@ document.getElementById('quiz-form').addEventListener('submit', function(e) {
     q_can_fall: document.getElementById('q_can_fall').value,
     q_lottery:  document.getElementById('q_lottery').value,
   };
-  if (liveSocket && liveSocket.readyState === WebSocket.OPEN) {
-    liveSocket.send(JSON.stringify(payload));
-  } else {
-    // Fallback: direct form submit (quiz logic handled server-side on next page)
-    document.getElementById('otree-form').submit();
+  // Answers are always graded server-side. There is deliberately NO
+  // fallback that advances the page without grading.
+  var btn = document.getElementById('quiz-btn');
+  var statusEl = document.getElementById('quiz-global-msg');
+  btn.disabled = true;
+  if (!clLive.isOpen()) {
+    statusEl.style.display = 'block';
+    statusEl.className = 'cl-alert cl-alert--info';
+    statusEl.textContent = 'Connecting… your answers will be checked in a moment.';
   }
+  clLive.send(payload);
+  setTimeout(function() { btn.disabled = false; }, 1500);
 });
 </script>
 {% endblock %}

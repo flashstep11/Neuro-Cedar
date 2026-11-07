@@ -1,0 +1,5 @@
+{# Stage progress bar; `progress` is a list of "done" | "active" | "" from _base_vars. #}
+<div class="cl-progress__label">Investment Stage {{ stage_no }} of {{ stage_total }}</div>
+<div class="cl-progress" role="progressbar" aria-valuenow="{{ stage_no }}" aria-valuemin="1" aria-valuemax="{{ stage_total }}">
+  {% for s in progress %}<div class="cl-progress__step{% if s %} cl-progress__step--{{ s }}{% endif %}"></div>{% endfor %}
+</div>

@@ -1,0 +1,75 @@
+{% extends "cedarline/_invest_base.html" %}
+{# Round 2: "add more before withdrawing?" — after the round-1 outcome.
+   Same disclosure as S4. Options run from Rs 0 to whatever keeps both
+   withdrawal charges affordable (total cap minus R1). No countdown here. #}
+
+{% block title %}Add More Before Withdrawing{% endblock %}
+
+{% block content %}
+{% include "cedarline/_progress.html" %}
+
+{% if is_manipulative %}
+  {% include "cedarline/_tier_card.html" %}
+  {% include "cedarline/_ticker.html" %}
+  {% include "cedarline/_advisor.html" %}
+{% endif %}
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+    <div class="cl-balance-card__sub">Available</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs {{ platform_balance }}</div>
+    <div class="cl-balance-card__sub">On platform</div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <h2>Would you like to add more before withdrawing?</h2>
+  {% if is_manipulative %}
+    <div class="cl-social-line" aria-hidden="true">
+      &#9203; Don't miss this cycle &mdash; members who top up now keep their Gold progress
+    </div>
+    {% include "cedarline/_scarcity.html" %}
+  {% endif %}
+
+  <div class="cl-range-line">
+    <strong>Important:</strong> The platform applies an additional return to
+    any amount you add now. This can range from roughly
+    <strong>{{ pool_min_pct }}%</strong> to
+    <strong>+{{ pool_max_pct }}%</strong> — the value may rise or fall.
+  </div>
+
+  <form method="post" id="reinvest-form" class="cl-mt-2">
+    <div class="cl-form-group">
+      <label class="cl-label" for="reinvest-select">Select amount to add (Rs):</label>
+      <select class="cl-select" id="reinvest-select" name="reinvest2_amount"
+              required aria-required="true" aria-describedby="range-hint">
+        <option value="" disabled selected>Select an amount</option>
+        {% for opt in r_options %}<option value="{{ opt }}">Rs {{ opt }}</option>{% endfor %}
+      </select>
+      <div class="cl-muted cl-mt-1" id="range-hint">
+        {% if r2_max > 0 %}
+          Choose from Rs 0 to Rs {{ r2_max }} in steps of Rs {{ C.STEP }} (choose Rs 0 to add nothing).
+        {% else %}
+          You have already moved the maximum of Rs {{ cap }} into the pool, so choose Rs 0.
+        {% endif %}
+      </div>
+    </div>
+
+    {% if is_manipulative %}
+      <button type="submit" class="cl-btn cl-btn--manip-primary cl-pulse" id="reinvest-submit">Confirm →</button>
+      <div class="cl-secure-row" aria-hidden="true">&#128274; 256-bit secured &middot; &#10003; Verified platform</div>
+    {% else %}
+      <button type="submit" class="cl-btn cl-btn--primary" id="reinvest-submit">Confirm →</button>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% include "cedarline/_reinvest_logging.html" %}
+{% endblock %}

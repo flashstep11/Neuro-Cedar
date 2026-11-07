@@ -1,0 +1,129 @@
+{% extends "cedarline/_invest_base.html" %}
+{# ==========================================================================
+   Withdrawal fee ladder — shared by W2Fee1 (step 1) and W3Fee2 (step 2).
+
+   Shows cash, platform balance and the fee: the same facts a real app shows.
+   It deliberately does NOT pre-compute "final balance if you pay/abandon",
+   so the choice reflects perception rather than reading off an answer.
+
+   Every statement is true inside the task: step 1 says paying "continues
+   processing" (a second charge follows); only step 2 says paying releases
+   the balance. The terms link discloses that further verification may apply.
+
+   Identical facts and options in both UI arms. Manipulative-only additions:
+   advisor message, sunk-cost line (step 2), freeze countdown (step 2, via
+   the pre_content banner), toasts.
+   ========================================================================== #}
+
+{% block title %}{% if step == 1 %}Withdrawal Processing Fee{% else %}Verification Required{% endif %}{% endblock %}
+
+{% block content %}
+{% include "cedarline/_progress.html" %}
+
+{% if is_manipulative %}
+  {% include "cedarline/_ticker.html" %}
+  {% include "cedarline/_advisor.html" %}
+{% endif %}
+
+<div class="cl-card cl-card--accent">
+  {% if step == 1 %}
+    <h2>Withdrawal processing fee</h2>
+    <div class="cl-alert cl-alert--warn" role="alert">
+      A <strong>withdrawal processing fee of Rs {{ fee }}</strong> applies to your
+      withdrawal. It is paid from your cash balance.
+    </div>
+  {% else %}
+    <h2>Withdrawal on hold: verification required</h2>
+    <div class="cl-alert cl-alert--warn" role="alert">
+      Your withdrawal is on hold. An <strong>account verification fee of Rs {{ fee }}</strong>
+      is required before your platform balance can be released. It is paid from your cash balance.
+    </div>
+    <p class="cl-muted">Fees paid so far: <strong>Rs {{ fees_paid_so_far }}</strong> (non-refundable)</p>
+    {% if sunk_line %}
+      <div class="cl-sunk-line" aria-hidden="true">
+        &#9888;&#65039; Don't lose the Rs {{ fees_paid_so_far }} you've already paid!
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs {{ platform_balance }}</div>
+    <div class="cl-balance-card__sub">Pending withdrawal</div>
+  </div>
+</div>
+
+<div class="cl-fee-links">
+  <button type="button" class="cl-linkbtn" id="terms-open">View fee terms</button>
+  <span aria-hidden="true">&middot;</span>
+  <button type="button" class="cl-linkbtn" id="support-open">Contact support</button>
+</div>
+
+<!-- Option A: pay -->
+<div class="cl-card cl-mb-2 cl-option" id="opt-pay">
+  <h2>Pay Rs {{ fee }}</h2>
+  {% if step == 1 %}
+    <p>Pay Rs {{ fee }} from your cash to continue processing your withdrawal of Rs {{ platform_balance }}.</p>
+  {% else %}
+    <p>Pay Rs {{ fee }} from your cash to complete verification and release your platform balance of Rs {{ platform_balance }}.</p>
+  {% endif %}
+  <form method="post" id="form-pay">
+    <input type="hidden" name="{{ decision_field }}" value="pay">
+    <input type="hidden" name="{{ log_field }}" class="js-process-log" value="">
+    {% if is_manipulative %}
+      <button type="submit" class="cl-btn cl-btn--manip-primary cl-pulse">Pay Rs {{ fee }}</button>
+    {% else %}
+      <button type="submit" class="cl-btn cl-btn--primary">Pay Rs {{ fee }}</button>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Option B: abandon -->
+<div class="cl-card cl-option" id="opt-abandon">
+  <h2>Abandon withdrawal</h2>
+  <p>
+    Keep your cash of Rs {{ keep_if_abandon }}. Your platform balance of
+    Rs {{ platform_balance }} will be forfeited{% if step == 2 %}, and the
+    Rs {{ fees_paid_so_far }} already paid is not refunded{% endif %}.
+  </p>
+  <form method="post" id="form-abandon" class="cl-mt-1">
+    <input type="hidden" name="{{ decision_field }}" value="abandon">
+    <input type="hidden" name="{{ log_field }}" class="js-process-log" value="">
+    <button type="submit" class="cl-btn cl-btn--outline">Abandon withdrawal</button>
+  </form>
+</div>
+
+<!-- Modals (logged as process events) -->
+<dialog class="cl-dialog" id="terms-modal" aria-labelledby="terms-title">
+  <div>
+    <h3 id="terms-title">Withdrawal terms</h3>
+    <p>
+      Processing and verification charges are payable in advance from your
+      cash balance and are non-refundable. Additional verification may be
+      required before funds are released.
+    </p>
+    <button type="button" class="cl-btn cl-btn--primary" data-close>Close</button>
+  </div>
+</dialog>
+<dialog class="cl-dialog" id="support-modal" aria-labelledby="support-title">
+  <div>
+    <h3 id="support-title">{{ platform_name }} Support</h3>
+    <div class="cl-support-msg">
+      Thank you for reaching out. Withdrawal charges are a standard part of
+      processing and cannot be waived or deducted from your balance.
+    </div>
+    <button type="button" class="cl-btn cl-btn--primary" data-close>Back to withdrawal</button>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+{% include "cedarline/_processing.html" %}
+{% include "cedarline/_choice_tracking.html" %}
+{% endblock %}

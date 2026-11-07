@@ -60,61 +60,94 @@
       </button>
       <button type="button" class="cl-btn cl-btn--outline" style="flex:1"
               id="contact-skip-btn">
-        Skip (I'll Use My Claim Token)
+        Continue with Claim Token
       </button>
     </div>
+
+    {% if allow_opt_out %}
+    <div class="cl-mt-2" style="text-align:center;">
+      <button type="button" class="cl-btn cl-btn--outline" id="contact-optout-btn"
+              style="font-size:0.85rem;color:#b91c1c;border-color:#fca5a5;">
+        Opt Out of Lottery Draw
+      </button>
+    </div>
+    {% endif %}
   </div>
 </div>
 
 <!-- Hidden oTree next-page form -->
 <form method="post" id="otree-next" style="display:none">
-  
+  <input type="hidden" name="lottery_opt_out_str" id="opt-out-input" value="0">
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function() {
-  var wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = wsScheme + '://' + window.location.host + '/live/{{ player.id_in_group }}/{{ player.subsession.session.code }}/';
-  var ws;
-  try { ws = new WebSocket(wsUrl); } catch(e) {}
+  var msg = document.getElementById('contact-msg');
+  var saveBtn = document.getElementById('contact-save-btn');
+  var pendingTimer = null;
 
-  if (ws) {
-    ws.onmessage = function(e) {
-      var data = JSON.parse(e.data);
-      var payload = data[{{ player.id_in_group }}] || data;
-      if (payload.status === 'saved') {
-        var msg = document.getElementById('contact-msg');
-        msg.style.display = 'block';
-        msg.className = 'cl-alert cl-alert--success';
-        msg.textContent = 'Contact details saved. Proceeding…';
-        setTimeout(function() {
-          document.getElementById('otree-next').submit();
-        }, 900);
-      }
-    };
+  function show(cls, text) {
+    msg.style.display = 'block';
+    msg.className = 'cl-alert ' + cls;
+    msg.textContent = text;
   }
+  function advance() { document.getElementById('otree-next').submit(); }
 
-  document.getElementById('contact-save-btn').addEventListener('click', function() {
-    var payload = {
-      action: 'submit_contact',
-      name:   document.getElementById('contact-name').value,
-      email:  document.getElementById('contact-email').value,
-      phone:  document.getElementById('contact-phone').value,
-    };
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(payload));
-    } else {
-      // Fallback: just advance
-      document.getElementById('otree-next').submit();
+  clLive.onMessage(function(data) {
+    var payload = data[{{ player.id_in_group }}] || data;
+    if (!payload || !payload.status) return;
+    clearTimeout(pendingTimer);
+    if (payload.status === 'saved') {
+      show('cl-alert--success', 'Contact details saved. Proceeding…');
+      setTimeout(advance, 900);
+    } else if (payload.status === 'opted_out') {
+      show('cl-alert--info', 'You have opted out of the lottery. Proceeding…');
+      setTimeout(advance, 900);
     }
   });
 
-  document.getElementById('contact-skip-btn').addEventListener('click', function() {
-    document.getElementById('otree-next').submit();
+  // Wait for the server to confirm; if it does not, say so instead of
+  // silently moving on without saving.
+  function sendAndWait(payload, failText) {
+    saveBtn.disabled = true;
+    clLive.send(payload);
+    pendingTimer = setTimeout(function() {
+      saveBtn.disabled = false;
+      show('cl-alert--danger', failText);
+    }, 8000);
+  }
+
+  saveBtn.addEventListener('click', function() {
+    var email = document.getElementById('contact-email').value.trim();
+    var phone = document.getElementById('contact-phone').value.trim();
+    if (!email && !phone) {
+      show('cl-alert--warn', 'Please enter an email or phone number, or continue with your claim token.');
+      return;
+    }
+    sendAndWait({
+      action: 'submit_contact',
+      name:  document.getElementById('contact-name').value,
+      email: email,
+      phone: phone
+    }, 'Could not save your details (connection problem). Please try again, or continue with your claim token.');
   });
+
+  document.getElementById('contact-skip-btn').addEventListener('click', advance);
+
+  var optoutBtn = document.getElementById('contact-optout-btn');
+  if (optoutBtn) {
+    optoutBtn.addEventListener('click', function() {
+      if (confirm('Are you sure you want to opt out of the lottery prize draw? Your entries will be set to 0.')) {
+        // The hidden form field records the opt-out server-side even if the
+        // live message is lost.
+        document.getElementById('opt-out-input').value = '1';
+        clLive.send({action: 'opt_out'});
+        pendingTimer = setTimeout(advance, 2500);
+      }
+    });
+  }
 })();
 </script>
 {% endblock %}
-

@@ -1,0 +1,39 @@
+{# Process logging for the reinvestment pages (S4 and S6), sent to the page's
+   live_method via cl_live.js. The server ALSO records submit time and timer
+   state in before_next_page, so key measures never depend on this socket.
+   Expects #reinvest-select, #reinvest-form and .cl-range-line on the page. #}
+<script>
+(function() {
+  function send(action, amount) {
+    if (window.clLive) clLive.send({action: action, amount: amount === undefined ? null : amount});
+  }
+  send('first_render', null);
+
+  var sel = document.getElementById('reinvest-select');
+  if (sel) sel.addEventListener('change', function() { send('change', sel.value); });
+
+  var form = document.getElementById('reinvest-form');
+  if (form) form.addEventListener('submit', function() { send('final_submit', sel ? sel.value : null); });
+
+  // Was the rise/fall disclosure actually on screen? (at least half visible)
+  var disc = document.querySelector('.cl-range-line');
+  if (disc && 'IntersectionObserver' in window) {
+    var shown = false;
+    new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        var now = e.intersectionRatio >= 0.5;
+        if (now !== shown) { shown = now; send(now ? 'disclosure_visible' : 'disclosure_hidden', null); }
+      });
+    }, {threshold: [0, 0.5, 1]}).observe(disc);
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    send(document.hidden ? 'tab_hidden' : 'tab_visible', null);
+  });
+
+  {% if show_timer %}
+  var expiresIn = ({{ timer_deadline_ts }} - Date.now() / 1000) * 1000;
+  if (expiresIn > 0) setTimeout(function() { send('timer_expired', null); }, expiresIn);
+  {% endif %}
+})();
+</script>

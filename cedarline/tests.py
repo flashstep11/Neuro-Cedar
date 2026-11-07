@@ -1,163 +1,142 @@
 """
-tests.py — oTree bot tests for the Cedarline study.
+tests.py — oTree bot tests for the Cedarline study (v2: two rounds + fee ladder).
 
-Tests cover:
-  - Every R x both rewards x every pool outcome x pay/abandon, in BOTH UI arms
-  - All must match simulator/payoff_simulator.py exactly for final balance,
-    flags and lottery weight
-  - The UI layer must never change the numbers
+Each test case walks the full flow along one withdrawal path and checks, against
+logic.ledger (exact Fractions):
+  - final balance, fees paid, release, zone, step-1/step-2 flags, lottery weight
+  - invariants: both fees affordable at the chosen R1+R2; platform balance >= 0
+  - pages that should be skipped are skipped (S7 when R2 = 0, W3 when F1 refused)
+  - pool outcomes come from the pre-generated sequence (index + version stored)
+  - the quiz is passed only through the real server-side grading
+  - no contact data on the Player model
 
-Tests also verify:
-  - Invariants: cash >= F at every allowed R; platform balance >= 0
-  - Export contains no contact data (lottery_db fields never in Player)
-
-NOTE: oTree bots submit forms page by page. We use Submission() with
-check_html=False since our templates use custom form layouts.
+Run every case in every cell with:  otree test <session_config>
 """
-import sys
 import os
+import sys
 from fractions import Fraction as Fr
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from otree.api import Bot, Submission, expect
 from cedarline import (
-    C, ContentWarning, Instructions, Consent, ComprehensionQuiz,
-    QuizFailed, Assignment, S1Endowment, S2Commitment, S3ReturnReveal,
-    S4Reinvestment, S5PoolOutcome, S6Withdraw, S7FeeDisplay, S8PayAbandon,
-    PostTask, LotteryContact, Debrief,
+    C, ContentWarning, Instructions, Consent, ComprehensionQuiz, Assignment,
+    S1Endowment, S2Commitment, S3ReturnReveal, S4Reinvestment, S5PoolOutcome,
+    S6Reinvest2, S7PoolOutcome2, W1Withdraw, W2Fee1, W3Fee2, W4Outcome,
+    HypotheticalRealMoney, PostTask, LotteryContact, Debrief,
 )
 from logic import ledger
-from config import F, LOTTERY_WEIGHT_DIVISOR
+from config import F1, F2, LOTTERY_WEIGHT_DIVISOR
 
 
-def _expected_final(g, R, r, pay):
-    """Compute expected final balance using the real ledger (Fractions)."""
-    return int(ledger.final_balance(g, R, r, F, pay))
+def call_live_method(method, group, page_class, **kwargs):
+    """
+    oTree calls this once per group per live page. The quiz can only be left
+    after server-side grading, so bots answer it through the real live_method.
+    """
+    if page_class.__name__ == "ComprehensionQuiz":
+        for p in group.get_players():
+            reply = method(p.id_in_group, {"action": "submit_quiz", **C.QUIZ_CORRECT})
+            assert reply and reply[p.id_in_group]["status"] == "pass", reply
 
 
-def _expected_flag(g, R, r, pay):
-    """Compute expected flag using the real ledger."""
-    return ledger.classify(g, R, r, F, pay)
-
-
-def _expected_lottery_weight(g, R, r, pay):
-    fb = ledger.final_balance(g, R, r, F, pay)
-    return max(0.0, float(fb) / LOTTERY_WEIGHT_DIVISOR)
+def _frac(num, den):
+    return Fr(0) if num is None else Fr(num, den)
 
 
 class PlayerBot(Bot):
-    """
-    Bot walks the full study flow for whichever condition the player was
-    assigned to. The session config forces a specific cell via force_ui
-    and force_reward for dev testing.
-    """
+    # (R1, R2, pay fee 1, pay fee 2) — one full session per case
+    cases = [
+        {"name": "two_rounds_pay_both",   "R1": 300, "R2": 100, "pay1": True,  "pay2": True},
+        {"name": "no_invest_refuse_fee1", "R1": 0,   "R2": 0,   "pay1": False, "pay2": None},
+        {"name": "pay1_stop_at_fee2",     "R1": 200, "R2": 0,   "pay1": True,  "pay2": False},
+        {"name": "max_round1_pay_both",   "R1": C.CAP, "R2": 0, "pay1": True,  "pay2": True},
+        {"name": "round2_only_refuse",    "R1": 0,   "R2": 250, "pay1": False, "pay2": None},
+    ]
 
     def play_round(self):
-        # ---- Pre-assignment pages (neutral for everyone) ----
+        case = self.case
+        R1, R2, pay1, pay2 = case["R1"], case["R2"], case["pay1"], case["pay2"]
 
-        # ContentWarning: continue (exit_code stays blank)
         yield Submission(ContentWarning, {"exit_code": ""}, check_html=False)
-
-        # Instructions: just advance
         yield Submission(Instructions, {}, check_html=False)
-
-        # Consent: just advance (JS validation; bot bypasses it)
         yield Submission(Consent, {}, check_html=False)
-
-        # ComprehensionQuiz: the bot needs to submit via the form.
-        # oTree bots can't easily interact with live_method, so we
-        # submit the hidden otree-form directly to advance.
-        # The quiz logic runs via live websocket; for bot tests we skip
-        # the actual quiz interaction and just advance the page.
         yield Submission(ComprehensionQuiz, {}, check_html=False)
-
-        # QuizFailed: should be skipped (exit_code is "")
-        # Assignment: auto-advances, assigns the player
+        assert self.player.quiz_passed, "quiz must be passed via server-side grading"
         yield Submission(Assignment, {}, check_html=False)
 
-        # ---- Investment stages ----
-
-        # S1 Endowment
         yield Submission(S1Endowment, {}, check_html=False)
-
-        # S2 Commitment
         yield Submission(S2Commitment, {}, check_html=False)
-
-        # S3 Return Reveal
         yield Submission(S3ReturnReveal, {}, check_html=False)
-
-        # S4 Reinvestment — choose R based on the case
-        # Get the R value from participant.vars (set by the test case)
-        R = self.player.participant.vars.get("test_R", 0)
-        yield Submission(S4Reinvestment, {"reinvest_amount": R}, check_html=False)
-
-        # S5 Pool Outcome
+        yield Submission(S4Reinvestment, {"reinvest_amount": R1}, check_html=False)
+        if R1 > 0:
+            assert self.player.pool_return_num is not None and self.player.pool1_seq_index is not None
+        else:
+            assert self.player.field_maybe_none("pool_return_num") is None, "no draw when R1 = 0"
         yield Submission(S5PoolOutcome, {}, check_html=False)
+        yield Submission(S6Reinvest2, {"reinvest2_amount": R2}, check_html=False)
+        if R2 > 0:
+            assert self.player.pool2_return_num is not None
+            yield Submission(S7PoolOutcome2, {}, check_html=False)
 
-        # S6 Withdraw
-        yield Submission(S6Withdraw, {}, check_html=False)
+        yield Submission(W1Withdraw, {}, check_html=False)
+        yield Submission(W2Fee1, {"fee1_decision_str": "pay" if pay1 else "abandon",
+                                  "fee1_process_log": '{"v":2,"events":[[120,"terms_open"],[900,"terms_close"]]}'},
+                         check_html=False)
+        assert self.player.fee1_terms_opened == 1 and self.player.fee1_support_clicks == 0
+        if pay1:
+            yield Submission(W3Fee2, {"fee2_decision_str": "pay" if pay2 else "abandon",
+                                      "fee2_process_log": ""}, check_html=False)
+        yield Submission(W4Outcome, {}, check_html=False)
+        yield Submission(HypotheticalRealMoney, {"hyp_real_pay": 2, "hyp_real_max": 0}, check_html=False)
 
-        # S7 Fee Display
-        yield Submission(S7FeeDisplay, {}, check_html=False)
+        # ---- Ledger checks (exact) ----
+        p = self.player
+        g = Fr(35, 100) if p.reward_condition == "35pct" else Fr(0)
+        r1 = _frac(p.field_maybe_none("pool_return_num"), p.pool_return_den)
+        r2 = _frac(p.field_maybe_none("pool2_return_num"), p.pool2_return_den)
+        P = ledger.platform_balance(g, R1, r1, R2, r2)
+        W = ledger.final_balance(g, R1, r1, R2, r2, F1, F2, pay1, bool(pay2))
 
-        # S8 Pay/Abandon
-        pay = self.player.participant.vars.get("test_pay", True)
-        pay_str = "pay" if pay else "abandon"
-        yield Submission(S8PayAbandon, {"pay_decision_str": pay_str}, check_html=False)
+        expect(p.platform_balance_decision, "==", int(P))
+        expect(p.final_balance_int, "==", int(W))
+        expect(p.fees_paid_total, "==", int(ledger.fees_paid(F1, F2, pay1, bool(pay2))))
+        expect(bool(p.funds_released), "==", bool(pay1 and pay2))
+        expect(p.zone_at_fee, "==", ledger.zone(P, F1, F2))
+        flags = ledger.classify_step1(P, F1, F2, pay1)
+        expect(p.step1_flag_myopic, "==", flags["myopic"])
+        expect(p.step1_flag_full, "==", flags["full"])
+        expect(p.step2_flag, "==", ledger.classify_step2(P, F2, bool(pay2)) if pay1 else "")
+        assert abs(p.lottery_weight - max(0.0, float(W) / LOTTERY_WEIGHT_DIVISOR)) < 0.01
+        if not pay1:
+            assert p.field_maybe_none("fee2_paid") is None, "step 2 must be skipped after refusing fee 1"
 
-        # ---- Verify final balance matches ledger exactly ----
-        g_str = self.player.reward_condition
-        g = Fr(35, 100) if g_str == "35pct" else Fr(0)
-        r = Fr(self.player.pool_return_num, self.player.pool_return_den)
+        # Invariants
+        assert R1 + R2 <= C.CAP
+        assert ledger.cash(R1, R2) >= F1 + F2, "both fees must be affordable"
+        assert P >= 0
+        assert p.claim_token, "claim token created when the ledger closes"
+        for field_name in ["name", "email", "phone", "contact_name", "contact_email", "contact_phone"]:
+            assert not hasattr(p, field_name), f"PII field '{field_name}' on Player"
 
-        expected_fb = _expected_final(g, R, r, pay)
-        expected_flag = _expected_flag(g, R, r, pay)
-        expected_lw = _expected_lottery_weight(g, R, r, pay)
+        post = {
+            "q_sure_fee1": 50, "q_realworld": "support,report",
+            "q_trust": 4, "q_legitimacy": 4, "q_risk": 4, "q_confidence": 4,
+            "q_reward_noticed": "no", "q_ui_noticed": "no", "q_attention": 4, "q_suspicion": "",
+            "q_finlit_interest": "more_102", "q_finlit_inflation": "less", "q_finlit_risk": "false",
+            "q_dospert_invest": 4, "q_dospert_speculate": 3, "q_dospert_gamble": 2,
+        }
+        if pay1:
+            post["q_sure_fee2"] = 30
+        yield Submission(PostTask, post, check_html=False)
+        expect(self.player.q_realworld, "==", "support,report")
+        if pay1:
+            expect(self.player.q_sure_fee2, "==", 30)
 
-        expect(self.player.final_balance_int, "==", expected_fb)
-        expect(self.player.outcome_flag, "==", expected_flag)
-        # lottery_weight is float; check within tolerance
-        assert abs(self.player.lottery_weight - expected_lw) < 0.01, (
-            f"lottery_weight mismatch: got {self.player.lottery_weight}, "
-            f"expected {expected_lw}"
-        )
-
-        # ---- Verify invariants ----
-        # Cash >= F at the chosen R
-        assert int(ledger.cash(R)) >= F, f"cash({R}) < F={F}"
-        # Platform balance >= 0
-        P = ledger.platform_balance(g, R, r)
-        assert P >= 0, f"platform_balance negative: {P}"
-
-        # ---- Verify no PII in Player fields ----
-        # claim_token is a UUID (not PII); actual contact info is in lottery_db
-        for field_name in ["name", "email", "phone", "contact_name",
-                           "contact_email", "contact_phone"]:
-            assert not hasattr(self.player, field_name), (
-                f"PII field '{field_name}' found in Player model!"
-            )
-
-        # ---- Post-task questionnaire ----
-        yield Submission(PostTask, {
-            "q_trust": 4,
-            "q_legitimacy": 4,
-            "q_risk": 4,
-            "q_confidence": 4,
-            "q_reward_noticed": "no",
-            "q_ui_noticed": "no",
-            "q_attention": 4,      # correct attention check answer
-            "q_suspicion": "",
-        }, check_html=False)
-
-        # LotteryContact: skip (don't submit contact info)
-        yield Submission(LotteryContact, {}, check_html=False)
-
-        # Debrief
+        yield Submission(LotteryContact, {"lottery_opt_out_str": "0"}, check_html=False)
         yield Submission(Debrief, {}, check_html=False)
 
-        # ---- Verify completion tracking ----
-        assert self.player.is_completed == True, "Player should be marked completed after Debrief"
-        assert self.player.stage_reached == "Debrief", "Player stage_reached should be Debrief"
-        assert self.player.completion_ts is not None, "completion_ts should be set"
-
+        p = self.player
+        assert p.is_completed, "should be completed after Debrief"
+        assert p.stage_reached == "Debrief"
+        assert p.completion_ts is not None

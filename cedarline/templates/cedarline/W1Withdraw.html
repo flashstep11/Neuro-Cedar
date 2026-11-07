@@ -1,0 +1,38 @@
+{% extends "cedarline/_invest_base.html" %}
+
+{% block title %}Withdraw Funds{% endblock %}
+
+{% block content %}
+{% include "cedarline/_progress.html" %}
+
+{% if is_manipulative %}
+  {% include "cedarline/_ticker.html" %}
+{% endif %}
+
+<div class="cl-balance-row">
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Cash Available</div>
+    <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
+  </div>
+  <div class="cl-balance-card">
+    <div class="cl-balance-card__label">Platform Balance</div>
+    <div class="cl-balance-card__amount">Rs {{ platform_balance }}</div>
+  </div>
+</div>
+
+<div class="cl-card">
+  <h2>Withdraw your platform balance</h2>
+  <p>
+    Request a withdrawal of your platform balance of
+    <strong>Rs {{ platform_balance }}</strong>. Any processing details will be
+    shown before anything is charged.
+  </p>
+  <form method="post" class="cl-mt-2">
+    {% if is_manipulative %}
+      <button type="submit" class="cl-btn cl-btn--manip-primary">Withdraw Rs {{ platform_balance }}</button>
+    {% else %}
+      <button type="submit" class="cl-btn cl-btn--primary">Withdraw Rs {{ platform_balance }}</button>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

@@ -1,21 +1,10 @@
-{% extends "cedarline/_base.html" %}
+{% extends "cedarline/_invest_base.html" %}
 
 
 {% block title %}Initial Investment{% endblock %}
 
-{% block pre_content %}
-{% if is_manipulative %}
-  {% include "cedarline/_urgency_banner.html" %}
-{% endif %}
-{% endblock %}
-
 {% block content %}
-<div class="cl-progress__label">Investment Stage 2 of 8</div>
-<div class="cl-progress" role="progressbar" aria-valuenow="2" aria-valuemax="8">
-  {% for i in "1" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
-  <div class="cl-progress__step cl-progress__step--active"></div>
-  {% for i in "345678" %}<div class="cl-progress__step"></div>{% endfor %}
-</div>
+{% include "cedarline/_progress.html" %}
 
 {% if is_manipulative %}
   {% include "cedarline/_tier_card.html" %}

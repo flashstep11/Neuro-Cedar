@@ -1,46 +1,111 @@
-
-
-<div class="cl-urgency-banner" role="alert" aria-live="assertive"
-     id="cl-urgency-banner">
-  <span class="cl-urgency-banner__dot" aria-hidden="true"></span>
-  <span>VIP tier window closes in</span>
-  <span class="cl-urgency-timer" id="cl-timer-display"
-        aria-label="Time remaining">{{ timer_remaining_secs }}s</span>
+{# ==========================================================================
+   Manipulative arm only. Sticky top bar.
+   - On S4 (show_timer): the single 60-second, NON-BINDING countdown.
+     Deadline is stored server-side at first S4 render; refresh never resets.
+     At zero it shows "Window extended" — nothing else changes (no auto-submit,
+     no disabled controls, no altered outcomes).
+   - On every other stage: a "live" status strip (no countdown).
+   Identical in both reward arms; never mentions returns or 35%.
+   ========================================================================== #}
+{% if show_freeze %}
+{# Fee step 2 only (config.FREEZE_TIMER_ENABLED). Non-binding: at zero it
+   says "Freeze deadline extended" and nothing else changes. #}
+<div class="cl-urgency-banner cl-urgency-banner--freeze" id="cl-freeze-banner" role="timer" aria-live="off">
+  <div class="cl-urgency-banner__row">
+    <span class="cl-urgency-banner__flash" aria-hidden="true">&#9888;&#65039;</span>
+    <span class="cl-urgency-banner__text" id="cl-freeze-text">Account freeze in</span>
+    <span class="cl-urgency-timer" id="cl-freeze-display">{{ freeze_remaining_secs }}s</span>
+  </div>
+  <div class="cl-urgency-banner__track" aria-hidden="true">
+    <div class="cl-urgency-banner__fill" id="cl-freeze-fill"></div>
+  </div>
+</div>
+<script>
+(function() {
+  var DEADLINE_TS = {{ freeze_deadline_ts }}, TOTAL = {{ freeze_secs }};
+  var banner = document.getElementById('cl-freeze-banner');
+  var disp = document.getElementById('cl-freeze-display');
+  var fill = document.getElementById('cl-freeze-fill');
+  function fmt(s) { return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+  function tick() {
+    var left = Math.round(DEADLINE_TS - Date.now() / 1000);
+    if (left > 0) {
+      disp.textContent = fmt(left);
+      fill.style.width = Math.max(0, Math.min(100, left / TOTAL * 100)) + '%';
+      banner.classList.toggle('cl-urgency-banner--critical', left <= 15);
+      setTimeout(tick, 1000);
+    } else {
+      banner.classList.remove('cl-urgency-banner--critical');
+      banner.classList.add('cl-urgency-banner--extended');
+      document.getElementById('cl-freeze-text').textContent = 'Freeze deadline extended';
+      disp.textContent = '';
+    }
+  }
+  tick();
+})();
+</script>
+{% elif show_timer %}
+<div class="cl-urgency-banner" id="cl-urgency-banner" role="timer" aria-live="off">
+  <div class="cl-urgency-banner__row">
+    <span class="cl-urgency-banner__flash" aria-hidden="true">&#9889;</span>
+    <span class="cl-urgency-banner__text" id="cl-urgency-text">Gold-tier reinvestment window closes in</span>
+    <span class="cl-urgency-timer" id="cl-timer-display" data-cl-timer>
+      {{ timer_remaining_secs }}s
+    </span>
+  </div>
+  <div class="cl-urgency-banner__track" aria-hidden="true">
+    <div class="cl-urgency-banner__fill" id="cl-urgency-fill"></div>
+  </div>
 </div>
 
 <script>
 (function() {
-  // Deadline stored server-side once; every render computes from it.
-  const DEADLINE_TS = {{ timer_deadline_ts }};  // unix timestamp (float)
-  const timerEl = document.getElementById('cl-timer-display');
-  const bannerEl = document.getElementById('cl-urgency-banner');
-  if (!timerEl) return;
+  // Deadline stored server-side once at first S4 render; every render
+  // computes from it, so refresh never resets the timer.
+  var DEADLINE_TS = {{ timer_deadline_ts }};
+  var TOTAL = {{ timer_secs }};
+  var banner = document.getElementById('cl-urgency-banner');
+  var fill   = document.getElementById('cl-urgency-fill');
+  if (!banner) return;
 
   function fmt(s) {
-    if (s <= 0) return "00:00";
-    var m = Math.floor(s / 60);
-    var sec = s % 60;
-    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+    var m = Math.floor(s / 60), sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
 
   function tick() {
     var remaining = Math.round(DEADLINE_TS - Date.now() / 1000);
+    // Query every tick so inline timers rendered later in the page update too.
+    var timers = document.querySelectorAll('[data-cl-timer]');
     if (remaining > 0) {
-      timerEl.textContent = fmt(remaining);
+      timers.forEach(function(el) { el.textContent = fmt(remaining); });
+      if (fill) fill.style.width = Math.max(0, Math.min(100, remaining / TOTAL * 100)) + '%';
+      banner.classList.toggle('cl-urgency-banner--critical', remaining <= 15);
+      document.body.classList.toggle('cl-timer-critical', remaining <= 15);
+      setTimeout(tick, 1000);
     } else {
-      // Timer expired: show "Window extended" only — NO other side effects.
-      timerEl.textContent = '';
-      if (bannerEl) {
-        bannerEl.innerHTML =
-          '<span class="cl-urgency-banner__dot" aria-hidden="true"></span>' +
-          '<span>Window extended</span>';
-      }
-      return; // stop ticking
+      // Expired: show "Window extended" only — NO other side effects.
+      banner.classList.remove('cl-urgency-banner--critical');
+      banner.classList.add('cl-urgency-banner--extended');
+      document.body.classList.remove('cl-timer-critical');
+      document.getElementById('cl-urgency-text').textContent = 'Window extended';
+      timers.forEach(function(el) { el.textContent = ''; });
+      document.querySelectorAll('[data-cl-timer-wrap]').forEach(function(el) {
+        el.textContent = 'Window extended';
+      });
+      if (fill) fill.style.width = '0%';
     }
-    setTimeout(tick, 1000);
   }
-
   tick();
 })();
 </script>
-
+{% else %}
+<div class="cl-live-strip" aria-hidden="true">
+  <span class="cl-live-badge"><span class="cl-live-dot"></span>LIVE</span>
+  <span class="cl-live-strip__text">
+    <strong class="cl-live-count" data-cl-live-count>1,284</strong> investors active now
+  </span>
+  <span class="cl-live-strip__sep">&middot;</span>
+  <span class="cl-live-strip__text">Markets open</span>
+</div>
+{% endif %}

@@ -1,2 +1,2 @@
-otree>=5.10
-
+otree>=5.10,<6
+psycopg2-binary>=2.9

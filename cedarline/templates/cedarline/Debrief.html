@@ -24,6 +24,33 @@
 </div>
 {% else %}
 
+<!-- ---- Personal report card (built from this participant's own choices) ---- -->
+<div class="cl-card cl-report">
+  <div class="cl-report__head">
+    <div>
+      <div class="cl-report__eyebrow">Your report card</div>
+      <h2>How the app tried to influence you</h2>
+    </div>
+    {% if final_balance != None %}
+    <div class="cl-report__balance">
+      <div class="cl-report__balance-label">Final virtual balance</div>
+      <div class="cl-report__balance-amt">Rs {{ final_balance }}</div>
+    </div>
+    {% endif %}
+  </div>
+  <ul class="cl-report__list">
+    {% for item in report_card %}
+    <li class="cl-report__item cl-report__item--{{ item.tone }}">
+      <span class="cl-report__icon" aria-hidden="true">{% if item.tone == "good" %}&#10003;{% elif item.tone == "warn" %}!{% else %}i{% endif %}</span>
+      <div>
+        <div class="cl-report__title">{{ item.title }}</div>
+        <div class="cl-report__detail">{{ item.detail }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
 <div class="cl-card">
   <h2>What Was This Study About?</h2>
   <p>
@@ -42,23 +69,38 @@
       <strong>Return on initial investment</strong> — Some participants saw a
       0% return and some saw a 35% return on the initial Rs 100. This was
       randomly determined and was intended to study how initial returns
-      affect subsequent decisions.
+      affect subsequent decisions. The apparent gain was simulated.
     </li>
     <li>
-      <strong>Social proof cues</strong> — Some participants saw a ticker
-      showing fictional investor activity (e.g., "Aarav K. just reinvested").
-      These messages were entirely fictional and not based on any real data.
+      <strong>Social proof cues</strong> — Some participants saw a live
+      investor count and pop-ups of fictional investor activity
+      (e.g., "Aarav K. from Pune just reinvested"). These were entirely
+      made up and not based on any real data.
     </li>
     <li>
       <strong>Urgency timer</strong> — Some participants saw a countdown
-      timer labelled "VIP tier window closes in…". This timer was
-      non-binding and had no effect on the study or outcomes.
+      labelled "Gold-tier reinvestment window closes in…". It was
+      non-binding: at zero it only showed "Window extended" and had no effect
+      on the study or outcomes.
     </li>
     <li>
-      <strong>Withdrawal processing fee</strong> — The Rs 200 processing fee
-      is a common tactic in real app-based investment fraud (sometimes called
-      a "recovery scam"). In this study, all balances were virtual and no
-      real money was involved.
+      <strong>Status and pressure cues</strong> — Some participants saw a
+      "Silver Member, 72% to Gold" card (fixed at 72% for everyone), an
+      "Only 3 Gold slots left" notice, member reviews and messages from an
+      "account manager". All of these were made up and did not respond to
+      any choice.
+    </li>
+    <li>
+      <strong>Withdrawal charges</strong> — Everyone who paid the Rs {{ f1 }}
+      processing fee was then asked for a Rs {{ f2 }} verification fee, and
+      only paying both released the balance. This "one more fee" sequence is
+      a common tactic in real app-based investment fraud.
+      {% if freeze_enabled %}Some participants also saw an "account freeze"
+      countdown; it was non-binding and had no effect.{% endif %}
+      The Rs {{ cap }} reinvestment limit was set so that everyone always had
+      enough cash to pay both charges. Once both charges are counted,
+      reinvesting rarely paid off, which mirrors how real fraud apps work.
+      All balances were virtual and no real money was involved.
     </li>
   </ul>
 </div>
@@ -66,13 +108,14 @@
 <div class="cl-card">
   <h2>About the Pool Return</h2>
   <p>
-    The return applied to your reinvestment (which could be roughly
+    The return applied to each reinvestment (which could be roughly
     {{ pool_min_pct }}% to +{{ pool_max_pct }}%) was
     <strong>randomly determined</strong> and was
     <strong>independent of</strong>:
   </p>
   <ul>
     <li>Your reward condition (0% or 35% initial return)</li>
+    <li>Your earlier pool result (each round was drawn separately)</li>
     <li>The interface you saw (neutral or persuasive)</li>
     <li>The amount you chose to reinvest</li>
   </ul>
@@ -87,6 +130,16 @@
   </p>
 </div>
 
+<div class="cl-card">
+  <h2>Red Flags to Remember</h2>
+  <ul>
+    <li>Never pay a fee, "tax" or deposit to release a withdrawal. Real platforms deduct charges; they do not ask you to pay first.</li>
+    <li>Countdowns, "limited slots" and "live" investor counts are designed to stop you from thinking it through.</li>
+    <li>Early profits shown inside an app are just numbers until the money reaches your bank account.</li>
+    <li>Badges and certificates inside an app prove nothing. Check registration on the regulator's own website.</li>
+  </ul>
+</div>
+
 {% endif %}
 
 <div class="cl-card">
@@ -97,12 +150,15 @@
   </p>
   <ul>
     <li>
-      SEBI (Securities and Exchange Board of India) complaint portal:
-      [VERIFY: insert URL — do not invent contact details]
+      National Cyber Crime Helpline: call <strong>1930</strong>
     </li>
     <li>
-      Cyber Crime reporting portal (India):
-      [VERIFY: insert URL — do not invent contact details]
+      National Cyber Crime Reporting Portal (India):
+      <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer">https://cybercrime.gov.in</a>
+    </li>
+    <li>
+      SEBI (Securities and Exchange Board of India) complaint portal:
+      <a href="https://scores.sebi.gov.in" target="_blank" rel="noopener noreferrer">https://scores.sebi.gov.in</a>
     </li>
   </ul>
   <p class="cl-muted cl-mt-2">
@@ -119,4 +175,3 @@
   <p class="cl-muted cl-mt-2">You may close this window.</p>
 </div>
 {% endblock %}
-

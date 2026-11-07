@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}{{ C.PLATFORM_NAME }}{% endblock %} — {{ C.PLATFORM_NAME }}</title>
 
   <!-- Load the shared design system CSS (no external CDN) -->
@@ -12,7 +11,11 @@
   <!-- Extra per-page styles -->
   {% block extra_styles %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+
+{# .cl-shell is a plain wrapper on study pages and a phone frame on S1–S8
+   (body.cl-app, see _invest_base.html). #}
+<div class="cl-shell">
 
 <!-- =========================================================================
    HEADER — shown on every page
@@ -35,8 +38,10 @@
 
       <div class="cl-header__text">
         <div class="cl-header__name">{{ C.PLATFORM_NAME }}</div>
-        <div class="cl-header__tagline">Smart, secure, transparent</div>
+        <div class="cl-header__tagline">{% block tagline %}Smart, secure, transparent{% endblock %}</div>
       </div>
+
+      {% block header_extra %}{% endblock %}
 
     </div>
   </div>
@@ -52,6 +57,11 @@
    ========================================================================= -->
 <main class="cl-main" role="main">
   <div class="cl-wrap">
+    {% if form.errors %}
+      <div class="cl-alert cl-alert--danger" role="alert">
+        {% if form.non_field_error %}{{ form.non_field_error }}{% else %}Please check your answers and try again.{% endif %}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </main>
@@ -63,11 +73,21 @@
   {{ C.PLATFORM_NAME }} is a fictional platform used for this study.
 </footer>
 
+{% block bottom_nav %}{% endblock %}
+
+</div>{# /.cl-shell #}
+
 <!-- =========================================================================
    SCRIPTS
    ========================================================================= -->
+{% if has_live_method %}
+  {# oTree's real live-method socket path. Read via dataset so the &-separated
+     query string is HTML-decoded correctly. cl_live.js exposes window.clLive. #}
+  <script id="cl-live" data-path="{{ view.live_url() }}"></script>
+  <script src="{{ static 'cedarline/cl_live.js' }}"></script>
+{% endif %}
+{% block shell_scripts %}{% endblock %}
 {% block scripts %}{% endblock %}
 
 </body>
 </html>
-

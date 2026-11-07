@@ -1,25 +1,16 @@
-{% extends "cedarline/_base.html" %}
-
+{% extends "cedarline/_invest_base.html" %}
+{# Round 1 reinvestment: the PRIMARY outcome. Financial text, options and the
+   rise/fall disclosure are identical in both UI arms. #}
 
 {% block title %}Reinvestment Decision{% endblock %}
 
-{% block pre_content %}
-{% if is_manipulative %}
-  {% include "cedarline/_urgency_banner.html" %}
-{% endif %}
-{% endblock %}
-
 {% block content %}
-<div class="cl-progress__label">Investment Stage 4 of 8</div>
-<div class="cl-progress" role="progressbar" aria-valuenow="4" aria-valuemax="8">
-  {% for i in "123" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
-  <div class="cl-progress__step cl-progress__step--active"></div>
-  {% for i in "5678" %}<div class="cl-progress__step"></div>{% endfor %}
-</div>
+{% include "cedarline/_progress.html" %}
 
 {% if is_manipulative %}
   {% include "cedarline/_tier_card.html" %}
   {% include "cedarline/_ticker.html" %}
+  {% include "cedarline/_advisor.html" %}
 {% endif %}
 
 <div class="cl-balance-row">
@@ -36,12 +27,13 @@
 </div>
 
 <div class="cl-card">
-  <h2>
-    How much would you like to reinvest?
-    {% if is_manipulative %}
-      <span class="cl-recommended-tag">Recommended</span>
-    {% endif %}
-  </h2>
+  <h2>How much would you like to reinvest?</h2>
+  {% if is_manipulative %}
+    <div class="cl-social-line" aria-hidden="true">
+      &#128293; <strong>9 out of 10</strong> Gold members reinvest at this stage
+    </div>
+    {% include "cedarline/_scarcity.html" %}
+  {% endif %}
 
   <!-- Truthful range line — always shown, identical in both arms -->
   <div class="cl-range-line">
@@ -51,79 +43,37 @@
     <strong>+{{ pool_max_pct }}%</strong> — the value may rise or fall.
   </div>
 
-  <form method="post" id="s4-form" class="cl-mt-2">
-    
-
+  <form method="post" id="reinvest-form" class="cl-mt-2">
     <div class="cl-form-group">
-      <label class="cl-label" for="reinvest_amount">
-        Select reinvestment amount (Rs):
-      </label>
-      <select class="cl-select" id="reinvest_amount" name="reinvest_amount"
+      <label class="cl-label" for="reinvest-select">Select reinvestment amount (Rs):</label>
+      <select class="cl-select" id="reinvest-select" name="reinvest_amount"
               required aria-required="true" aria-describedby="range-hint">
-        <!-- Blank required — no default -->
         <option value="" disabled selected>Select an amount</option>
-        {% for opt in r_options %}
-          <option value="{{ opt }}">Rs {{ opt }}</option>
-        {% endfor %}
+        {% for opt in r_options %}<option value="{{ opt }}">Rs {{ opt }}</option>{% endfor %}
       </select>
       <div class="cl-muted cl-mt-1" id="range-hint">
         Choose from Rs 0 to Rs {{ cap }} in steps of Rs {{ C.STEP }}.
+        In total you can move up to Rs {{ cap }} into the pool during the task.
       </div>
     </div>
 
-    <!-- Primary button: styled CTA in manipulative arm, plain in neutral -->
     {% if is_manipulative %}
-      <button type="submit"
-              class="cl-btn cl-btn--manip-primary cl-pulse"
-              id="s4-submit">
+      {% if show_timer %}
+        <div class="cl-cta-timer" aria-hidden="true">
+          &#9201; <span data-cl-timer-wrap>Window closes in <strong data-cl-timer>{{ timer_remaining_secs }}s</strong></span>
+        </div>
+      {% endif %}
+      <button type="submit" class="cl-btn cl-btn--manip-primary cl-pulse" id="reinvest-submit">
         Confirm Reinvestment →
       </button>
+      <div class="cl-secure-row" aria-hidden="true">&#128274; 256-bit secured &middot; &#10003; Verified platform</div>
     {% else %}
-      <button type="submit" class="cl-btn cl-btn--primary" id="s4-submit">
-        Confirm Reinvestment →
-      </button>
+      <button type="submit" class="cl-btn cl-btn--primary" id="reinvest-submit">Confirm Reinvestment →</button>
     {% endif %}
   </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-// S4 event logging via live_method WebSocket
-(function() {
-  var wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = wsScheme + '://' + window.location.host + '/live/{{ player.id_in_group }}/{{ player.subsession.session.code }}/';
-  var ws;
-  try { ws = new WebSocket(wsUrl); } catch(e) {}
-
-  function send(action, amount) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({action: action, amount: amount}));
-    }
-  }
-
-  // Log first render on page load
-  window.addEventListener('DOMContentLoaded', function() {
-    send('first_render', null);
-  });
-
-  // Log every dropdown change
-  var sel = document.getElementById('reinvest_amount');
-  if (sel) {
-    sel.addEventListener('change', function() {
-      send('change', sel.value);
-    });
-  }
-
-  // Log final submit
-  var form = document.getElementById('s4-form');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var val = sel ? sel.value : null;
-      send('final_submit', val);
-    });
-  }
-})();
-</script>
+{% include "cedarline/_reinvest_logging.html" %}
 {% endblock %}
-

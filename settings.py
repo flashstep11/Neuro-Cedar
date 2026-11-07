@@ -93,6 +93,14 @@ ADMIN_PASSWORD = os.environ.get("OTREE_ADMIN_PASSWORD", "changeme_before_deploy"
 
 SECRET_KEY = os.environ.get("OTREE_SECRET_KEY", "dev-secret-key-change-in-production")
 
+# Refuse to start a production server with the placeholder credentials or
+# without persistent storage configured.
+if os.environ.get("OTREE_PRODUCTION") == "1":
+    _missing = [k for k in ("OTREE_ADMIN_PASSWORD", "OTREE_SECRET_KEY", "DATABASE_URL", "DATA_DIR")
+                if not os.environ.get(k)]
+    if _missing:
+        raise RuntimeError(f"Production start blocked; set these env vars: {', '.join(_missing)}")
+
 DEMO_PAGE_INTRO_HTML = ""
 
 # Database: Postgres in production via DATABASE_URL env var; SQLite in dev.

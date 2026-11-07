@@ -1,0 +1,94 @@
+{# Process tracing on the fee screens (exploratory). From the moment the fee
+   is visible (after the processing sequence) to the choice, records:
+     pts      pointer path [t_ms, x, y] in page coordinates, ~30 Hz, capped
+     hovers   dwell on each option card [option, t_in_ms, t_out_ms]
+     events   [t_ms, name]: terms_open/close, support_open/close, tab hidden/visible
+     rects    option card rectangles at the moment of choice
+   Sent with the choice in a hidden field (no socket needed). Nothing here
+   changes what the participant sees. #}
+<script>
+(function() {
+  var t0 = performance.now();
+  // Clock starts when the fee becomes visible, not at page load.
+  if (window.clProcessingUntil) t0 = window.clProcessingUntil;
+  var MAX = 4000;
+  var pts = [], hovers = [], events = [], lastT = -1e9, inputType = null;
+  function now() { return Math.round(performance.now() - t0); }
+
+  function onMove(e) {
+    var t = now();
+    if (t < 0 || t - lastT < 33 || pts.length >= MAX) return;
+    lastT = t;
+    if (!inputType) inputType = e.pointerType || 'mouse';
+    pts.push([t, Math.round(e.pageX), Math.round(e.pageY)]);
+  }
+  document.addEventListener('pointermove', onMove, {passive: true});
+  document.addEventListener('pointerdown', onMove, {passive: true});
+
+  var openHover = {};
+  ['opt-pay', 'opt-abandon'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var key = id.replace('opt-', '');
+    el.addEventListener('pointerenter', function() { openHover[key] = now(); });
+    el.addEventListener('pointerleave', function() {
+      if (openHover[key] !== undefined) { hovers.push([key, openHover[key], now()]); delete openHover[key]; }
+    });
+  });
+  function closeHovers() {
+    Object.keys(openHover).forEach(function(k) { hovers.push([k, openHover[k], now()]); });
+    openHover = {};
+  }
+
+  // Terms and support dialogs (native <dialog>: top layer, centred, Esc closes)
+  function wireDialog(btnId, dlgId, name) {
+    var btn = document.getElementById(btnId), dlg = document.getElementById(dlgId);
+    if (!btn || !dlg) return;
+    btn.addEventListener('click', function() {
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+      events.push([now(), name + '_open']);
+    });
+    dlg.addEventListener('click', function(e) {
+      // close on the button or a click on the backdrop
+      if (e.target.hasAttribute('data-close') || e.target === dlg) {
+        if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
+      }
+    });
+    dlg.addEventListener('close', function() { events.push([now(), name + '_close']); btn.focus(); });
+  }
+  wireDialog('terms-open', 'terms-modal', 'terms');
+  wireDialog('support-open', 'support-modal', 'support');
+
+  document.addEventListener('visibilitychange', function() {
+    events.push([now(), document.hidden ? 'tab_hidden' : 'tab_visible']);
+  });
+
+  function rect(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    return [Math.round(r.left + window.scrollX), Math.round(r.top + window.scrollY),
+            Math.round(r.width), Math.round(r.height)];
+  }
+
+  document.querySelectorAll('#form-pay, #form-abandon').forEach(function(form) {
+    form.addEventListener('submit', function() {
+      closeHovers();
+      var payload = {
+        v: 2,
+        choice: form.id === 'form-pay' ? 'pay' : 'abandon',
+        rt_ms: now(),
+        input: inputType,
+        viewport: [window.innerWidth, window.innerHeight],
+        rects: {pay: rect('opt-pay'), abandon: rect('opt-abandon')},
+        hovers: hovers,
+        events: events,
+        truncated: pts.length >= MAX,
+        pts: pts
+      };
+      var field = form.querySelector('.js-process-log');
+      if (field) field.value = JSON.stringify(payload);
+    });
+  });
+})();
+</script>

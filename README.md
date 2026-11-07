@@ -211,20 +211,18 @@ Final balance, flags, and lottery weight are verified against
 
 ## [VERIFY] Checklist Before Participant Deployment
 
-Fill in every item below before any participant sees the app:
+Status of configuration and open deployment items:
 
-- [ ] **Contact email** — configured as `CONTACT_EMAIL = "flashstep11@gmail.com"` in `config.py` (referenced across Consent, Debrief, and QuizFailed pages)
-- [ ] **Support resources** — verify SEBI URL and cyber crime portal URL in `Debrief.html`; do NOT invent phone numbers
-- [ ] **Financial literacy scale** — replace TODO placeholder in `PostTask.html` with validated items and confirm permission to use
-- [ ] **DOSPERT items** — replace TODO placeholder in `PostTask.html` with validated wording and confirm permissions
-- [ ] **Pool** — `ACTIVE_POOL_KEY = "B_EV5"` is marked PILOT, NOT FROZEN in `config.py`. Confirm and freeze before data collection.
-- [ ] **Fee (F=200)** — confirm with research team before deployment
-- [ ] **OTREE_SECRET_KEY** — set a strong random value in production
-- [ ] **OTREE_ADMIN_PASSWORD** — set a strong value
-- [ ] **DATABASE_URL** — configure Postgres for production
-- [ ] **Persistent volume** — ensure `lottery_contacts.sqlite3` is on a persistent disk
-- [ ] **LOTTERY_OPT_OUT** flag in `config.py` — decision pending (currently `False`)
-- [ ] **Assumption A11** — `ledger.classify()` returns `"ok"` for the indifferent case (d==0); confirm whether the stored value should be `"ok"` or `"indifferent"` with the research team
+- [x] **Support resources** — confirmed and set to official URLs (`https://scores.sebi.gov.in` and `https://cybercrime.gov.in`) in `Debrief.html`
+- [x] **Financial literacy scale** — set to validated Lusardi & Mitchell "Big Three" questions in `PostTask.html`
+- [x] **DOSPERT scale** — set to validated Blais & Weber financial risk subscale items in `PostTask.html`
+- [x] **Fee amount** — confirmed `F = 200` in `config.py`
+- [x] **Lottery opt-out flag** — confirmed `LOTTERY_OPT_OUT = True` in `config.py` (participants may optionally opt out on `LotteryContact.html`)
+- [x] **Classification label (Assumption A11)** — confirmed `"indifferent"` label for $P = F$ indifferent cases in `ledger.py`
+- [ ] **Growth pool** — `ACTIVE_POOL_KEY = "B_EV5"` is marked `PILOT, NOT FROZEN` in `config.py`. Freeze before final data collection
+- [ ] **Production security keys** — set strong random `OTREE_SECRET_KEY` and `OTREE_ADMIN_PASSWORD` in the environment
+- [ ] **Production database** — configure Postgres `DATABASE_URL` for production deployment
+- [ ] **Persistent storage** — ensure `lottery_contacts.sqlite3` is mounted on a persistent disk (outside ephemeral container layers)
 
 ---
 

@@ -1,0 +1,40 @@
+# Render Blueprint for the Cedarline study.
+# Render dashboard -> New -> Blueprint -> pick this repo. It creates the
+# web service, the persistent disk and the Postgres database together.
+#
+# Verify plan names/prices on render.com before applying; they change.
+services:
+  - type: web
+    name: cedarline-study
+    runtime: python
+    plan: starter            # paid plan: required for a persistent disk; never sleeps
+    region: singapore        # closest Render region to India
+    numInstances: 1          # MUST stay 1: assignment/pool use a file lock
+    buildCommand: pip install -r requirements.txt
+    startCommand: otree prodserver 0.0.0.0:$PORT
+    disk:
+      name: cedarline-data
+      mountPath: /var/data   # assignment_state.json, pool_sequences.json, lottery_contacts.sqlite3
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OTREE_PRODUCTION
+        value: "1"
+      - key: OTREE_AUTH_LEVEL
+        value: STUDY
+      - key: DATA_DIR
+        value: /var/data
+      - key: OTREE_ADMIN_PASSWORD
+        sync: false          # Render asks you to type it in during setup
+      - key: OTREE_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cedarline-db
+          property: connectionString
+
+databases:
+  - name: cedarline-db
+    plan: basic-256mb        # paid; Render's free Postgres expires
+    region: singapore        # same region as the web service

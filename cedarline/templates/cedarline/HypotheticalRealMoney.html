@@ -1,0 +1,73 @@
+{% extends "cedarline/_base.html" %}
+{# ==========================================================================
+   Hypothetical real-money release question. Shown after the pay/abandon
+   choice, before the questionnaire. Neutral study styling in ALL cells:
+   the researcher is asking, not the platform, so it never reads as a
+   genuine request for money.
+   ========================================================================== #}
+
+{% block title %}One Hypothetical Question{% endblock %}
+
+{% block content %}
+<div class="cl-card cl-card--accent">
+  <h1>One hypothetical question</h1>
+  <p>
+    Your decision in the task is final and will not change.
+    The question below is <strong>purely hypothetical</strong>. You will not be
+    asked for, and cannot make, any real payment in this study.
+  </p>
+</div>
+
+<div class="cl-card">
+  <h2>Imagine this were real</h2>
+  <p>
+    Suppose {{ platform_name }} were a real app, and the platform balance
+    you saw at withdrawal, <strong>Rs {{ platform_balance }}</strong>, were real
+    money held in your name.
+  </p>
+  <p>
+    {% if path == "released" %}
+      After you paid both fees, the app says the balance is still on hold and
+      asks you to pay
+    {% elif path == "abandoned_fee2" %}
+      After you stopped at the verification fee, the app offers to release the
+      balance if you pay
+    {% else %}
+      After you declined the processing fee, the app offers to release the
+      balance if you pay
+    {% endif %}
+    <strong>an amount from your own real money</strong> (for example, a
+    "tax clearance" charge) before the funds can be released.
+  </p>
+
+  <form method="post" class="cl-mt-2">
+    <div class="cl-form-group">
+      <label class="cl-label">
+        Would you pay real money to release this balance?
+      </label>
+      <ul class="cl-radio-group">
+        {% for val, label in pay_scale %}
+        <li>
+          <label>
+            <input type="radio" name="hyp_real_pay" value="{{ val }}" required>
+            {{ label }}
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="cl-form-group">
+      <label class="cl-label" for="hyp_real_max">
+        What is the most real money (Rs) you would pay to release it?
+      </label>
+      <input class="cl-input" type="number" id="hyp_real_max" name="hyp_real_max"
+             min="0" max="100000" step="1" inputmode="numeric" required
+             placeholder="Enter 0 if you would not pay anything">
+      <div class="cl-muted cl-mt-1">Enter 0 if you would not pay anything.</div>
+    </div>
+
+    <button type="submit" class="cl-btn cl-btn--primary">Continue →</button>
+  </form>
+</div>
+{% endblock %}

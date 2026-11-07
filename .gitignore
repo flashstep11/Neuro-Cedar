@@ -33,3 +33,6 @@ Thumbs.db
 # Logs
 *.log
 
+
+# Archived runtime state from earlier design versions
+_archive/

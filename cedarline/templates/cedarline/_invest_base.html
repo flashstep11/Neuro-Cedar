@@ -1,0 +1,82 @@
+{% extends "cedarline/_base.html" %}
+{# ==========================================================================
+   Shared parent for investment stages S1–S8.
+   - Wraps the page in a phone-app shell (body.cl-app) in BOTH UI arms, so the
+     contrast is "legitimate app vs scam app", not "plain page vs app".
+   - Switches the skin by UI condition. Financial content (balances, options,
+     disclosures) lives in the child templates and is identical in both arms.
+   ========================================================================== #}
+
+{% block body_class %}cl-app {% if is_manipulative %}cl-skin-manip{% else %}cl-skin-neutral{% endif %}{% endblock %}
+
+{% block tagline %}{% if is_manipulative %}Trusted by 1,00,000+ smart investors{% else %}Smart, secure, transparent{% endif %}{% endblock %}
+
+{% block header_extra %}
+{% if is_manipulative %}
+  <div class="cl-header__badges" aria-hidden="true">
+    <span class="cl-verified-pill">&#10003; VERIFIED</span>
+    <span class="cl-bell">&#128276;<span class="cl-bell__dot">3</span></span>
+  </div>
+{% else %}
+  <div class="cl-header__badges" aria-hidden="true">
+    <span class="cl-secure-chip">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      Secure session
+    </span>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block pre_content %}
+{% if is_manipulative %}
+  {% include "cedarline/_urgency_banner.html" %}
+{% endif %}
+{% endblock %}
+
+{% block bottom_nav %}
+{# Decorative app tab bar: not interactive, identical in all four cells. #}
+<nav class="cl-tabbar" aria-hidden="true">
+  <span class="cl-tab cl-tab--active">
+    <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    <small>Home</small>
+  </span>
+  <span class="cl-tab">
+    <svg viewBox="0 0 24 24"><path d="M4 19h16M6 16V9m6 7V5m6 11v-4"/></svg>
+    <small>Portfolio</small>
+  </span>
+  <span class="cl-tab">
+    <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h2M3 9h18"/></svg>
+    <small>Wallet</small>
+  </span>
+  <span class="cl-tab">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+    <small>Profile</small>
+  </span>
+</nav>
+{% endblock %}
+
+{% block shell_scripts %}
+<script>
+// Count-up for balances marked data-countup (used on S5 in all four cells,
+// from the pre-pool value to the post-pool value). Text is already correct in
+// the HTML; this only animates it, so it degrades safely without JS.
+(function() {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('[data-countup]').forEach(function(el) {
+    var to = parseInt(el.getAttribute('data-countup'), 10);
+    var from = parseInt(el.getAttribute('data-from') || '0', 10);
+    if (reduce || isNaN(to) || isNaN(from) || to === from) return;
+    var start = null, dur = 1100;
+    function frame(t) {
+      if (start === null) start = t;
+      var k = Math.min(1, (t - start) / dur);
+      var eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = 'Rs ' + Math.round(from + (to - from) * eased);
+      if (k < 1) requestAnimationFrame(frame);
+    }
+    el.textContent = 'Rs ' + from;
+    setTimeout(function() { requestAnimationFrame(frame); }, 350);
+  });
+})();
+</script>
+{% endblock %}

@@ -12,7 +12,58 @@
   </p>
 </div>
 
-<form method="post">
+<form method="post" id="posttask-form">
+
+  <!-- ---- Section 0: The withdrawal (asked after all decisions, looking back) ---- -->
+  <div class="cl-card">
+    <h2>Looking Back at the Withdrawal</h2>
+    <p class="cl-muted">0 = not at all sure, 100 = completely sure.</p>
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        When you saw the Rs {{ f1 }} withdrawal processing fee, how sure were you
+        that paying it would get you your platform balance?
+      </label>
+      <div class="cl-scale cl-scale--wide" role="radiogroup" aria-label="Sureness at the first fee">
+        {% for val in sure_scale %}
+        <div class="cl-scale__option">
+          <input type="radio" name="q_sure_fee1" id="q_sure_fee1_{{ val }}" value="{{ val }}" required>
+          <label for="q_sure_fee1_{{ val }}">{{ val }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if reached_fee2 %}
+    <div class="cl-form-group">
+      <label class="cl-label">
+        When the Rs {{ f2 }} verification fee appeared, how sure were you that
+        paying it would get you your platform balance?
+      </label>
+      <div class="cl-scale cl-scale--wide" role="radiogroup" aria-label="Sureness at the second fee">
+        {% for val in sure_scale %}
+        <div class="cl-scale__option">
+          <input type="radio" name="q_sure_fee2" id="q_sure_fee2_{{ val }}" value="{{ val }}" required>
+          <label for="q_sure_fee2_{{ val }}">{{ val }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="cl-form-group">
+      <label class="cl-label">
+        If a real investment app asked you to pay a fee before you could withdraw,
+        what would you do? (Select all that apply.)
+      </label>
+      <ul class="cl-checkbox-group">
+        {% for key, label in realworld_options %}
+        <li><label><input type="checkbox" class="js-realworld" value="{{ key }}"> {{ label }}</label></li>
+        {% endfor %}
+      </ul>
+      <input type="hidden" name="q_realworld" id="q_realworld" value="">
+    </div>
+  </div>
   
 
   <!-- ---- Section 1: Perceptions ---- -->
@@ -101,31 +152,139 @@
     </div>
   </div>
 
-  <!-- ---- Section 5: Financial literacy PLACEHOLDER ---- -->
+  <!-- ---- Section 5: Financial literacy (Lusardi & Mitchell Big Three) ---- -->
   <div class="cl-card">
-    <h2>Financial Knowledge
-      <span class="cl-muted" style="font-size:.85rem;font-weight:400;">
-        <!-- TODO: confirm validated wording and permissions before deployment -->
-      </span>
-    </h2>
-    <div class="cl-alert cl-alert--info">
-      <strong>TODO:</strong> Insert validated financial literacy scale items here.
-      Confirm wording and usage permissions with the research team before
-      deploying to participants.
+    <h2>Financial Knowledge</h2>
+    <p class="cl-muted">
+      Please answer the following three questions to the best of your ability.
+    </p>
+
+    <!-- Item 1: Compound Interest -->
+    <div class="cl-form-group cl-mt-2">
+      <label class="cl-label">
+        1. Suppose you had Rs 100 in a savings account and the interest rate was 2% per year.
+        After 5 years, how much do you think you would have in the account if you left the money to grow?
+      </label>
+      <ul class="cl-radio-group">
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_interest" value="more_102" required>
+            More than Rs 102
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_interest" value="exact_102">
+            Exactly Rs 102
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_interest" value="less_102">
+            Less than Rs 102
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_interest" value="dk">
+            Do not know / Prefer not to say
+          </label>
+        </li>
+      </ul>
+    </div>
+
+    <hr class="cl-divider">
+
+    <!-- Item 2: Inflation -->
+    <div class="cl-form-group">
+      <label class="cl-label">
+        2. Imagine that the interest rate on your savings account was 1% per year and inflation was 2% per year.
+        After 1 year, with the money in this account, would you be able to buy:
+      </label>
+      <ul class="cl-radio-group">
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_inflation" value="more" required>
+            More than today
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_inflation" value="same">
+            Exactly the same as today
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_inflation" value="less">
+            Less than today
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_inflation" value="dk">
+            Do not know / Prefer not to say
+          </label>
+        </li>
+      </ul>
+    </div>
+
+    <hr class="cl-divider">
+
+    <!-- Item 3: Diversification -->
+    <div class="cl-form-group">
+      <label class="cl-label">
+        3. Do you think that the following statement is true or false?
+        <em>"Buying a single company stock usually provides a safer return than a mutual fund of company stocks."</em>
+      </label>
+      <ul class="cl-radio-group">
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_risk" value="true" required>
+            True
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_risk" value="false">
+            False
+          </label>
+        </li>
+        <li>
+          <label>
+            <input type="radio" name="q_finlit_risk" value="dk">
+            Do not know / Prefer not to say
+          </label>
+        </li>
+      </ul>
     </div>
   </div>
 
-  <!-- ---- Section 6: DOSPERT PLACEHOLDER ---- -->
+  <!-- ---- Section 6: DOSPERT Financial Risk Preferences ---- -->
   <div class="cl-card">
-    <h2>Risk Preferences
-      <span class="cl-muted" style="font-size:.85rem;font-weight:400;">
-        <!-- TODO: confirm validated wording and permissions before deployment -->
-      </span>
-    </h2>
-    <div class="cl-alert cl-alert--info">
-      <strong>TODO:</strong> Insert DOSPERT items here (financial domain).
-      Confirm validated wording and permissions before deploying.
+    <h2>Risk Preferences (DOSPERT)</h2>
+    <p class="cl-muted">
+      For each of the following statements, please indicate the likelihood that you would engage in the activity or behavior if you were to find yourself in that situation.
+      <br>
+      <em>Scale: 1 = Extremely Unlikely to 7 = Extremely Likely</em>
+    </p>
+
+    {% for field_name, label_text in dospert_items %}
+    <div class="cl-form-group cl-mt-2">
+      <label class="cl-label">
+        {{ label_text }}
+      </label>
+      <div class="cl-scale" role="radiogroup" aria-label="{{ label_text }}">
+        {% for val in "1234567" %}
+        <div class="cl-scale__option">
+          <input type="radio" name="{{ field_name }}" id="{{ field_name }}_{{ val }}"
+                 value="{{ val }}" required>
+          <label for="{{ field_name }}_{{ val }}">{{ val }}</label>
+        </div>
+        {% endfor %}
+      </div>
     </div>
+    {% endfor %}
   </div>
 
   <div class="cl-mt-2">
@@ -134,5 +293,13 @@
     </button>
   </div>
 </form>
+
+<script>
+// Join the real-world action checkboxes into one comma-separated field.
+document.getElementById('posttask-form').addEventListener('submit', function() {
+  var vals = Array.prototype.map.call(document.querySelectorAll('.js-realworld:checked'), function(c) { return c.value; });
+  document.getElementById('q_realworld').value = vals.join(',');
+});
+</script>
 {% endblock %}
 

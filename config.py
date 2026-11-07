@@ -10,25 +10,38 @@ from fractions import Fraction as Fr
 from logic.growth_pool import CANDIDATES
 
 # ---------------------------------------------------------------------------
-# Fee and reinvestment cap
+# Withdrawal fee ladder and reinvestment cap  (v2 design, see PROTOCOL_CHANGES.md)
 # ---------------------------------------------------------------------------
-F = 200                          # withdrawal fee in rupees (tunable)
+F1 = 200                         # step 1: withdrawal processing fee (Rs)
+F2 = 150                         # step 2: account verification fee (Rs), only if F1 paid
+# Chosen with simulator/payoff_simulator_v2.py (output_v2.txt). Retune after pilot.
 
-# From ledger: cap = ENDOWMENT - COMMIT - F = 1000 - 100 - 200 = 700
-# r_options(F) gives the full dropdown list; never hardcode the cap here.
-
+# Total cap across BOTH reinvestment rounds = 900 - F1 - F2 = 550, so both fees
+# are always affordable from cash. Derived in logic.ledger; never hardcode it.
 STEP = 50                        # reinvestment dropdown step (Rs)
+
+# Manipulative arm only: non-binding "account freeze" countdown on the step-2
+# fee screen. This is a SECOND countdown (protocol change from "one timer");
+# set False to remove it if ethics/instructor require a single timer.
+FREEZE_TIMER_ENABLED = True
+FREEZE_TIMER_SECS    = 60
 
 # ---------------------------------------------------------------------------
 # Active pool — PILOT, NOT FROZEN
-# Swappable: change ACTIVE_POOL_KEY to any key in CANDIDATES.
+# Candidate C is the guide's named pilot candidate (E[r] = +15%).
 # ---------------------------------------------------------------------------
-ACTIVE_POOL_KEY = "B_EV5"        # candidate B: -30% (p=0.5) / +40% (p=0.5)
+ACTIVE_POOL_KEY = "C_EV15"       # -30% (p=1/4) / +20% (p=1/2) / +50% (p=1/4)
 ACTIVE_POOL = CANDIDATES[ACTIVE_POOL_KEY]
+
+# Pre-generated outcome sequence: per cell AND per round, balanced blocks,
+# securely shuffled, never replenished (guide section 3). Bump the version
+# whenever the pool or length changes; a mismatch refuses to start.
+POOL_SEQ_VERSION = "v2-C_EV15-L160"
+POOL_SEQ_LENGTH  = 160           # outcomes per (cell, round); multiple of the block size
 
 # Derived range for instructions — pulled from pool, never hardcoded
 POOL_MIN_RETURN_PCT = int(min(r for r, _ in ACTIVE_POOL) * 100)   # -30
-POOL_MAX_RETURN_PCT = int(max(r for r, _ in ACTIVE_POOL) * 100)   # +40
+POOL_MAX_RETURN_PCT = int(max(r for r, _ in ACTIVE_POOL) * 100)   # +50
 
 # ---------------------------------------------------------------------------
 # Study parameters
@@ -47,24 +60,30 @@ PRIZE_VALUE    = 250             # Rs per voucher
 LOTTERY_WEIGHT_DIVISOR = 10      # entries = final_balance / 10
 
 # ---------------------------------------------------------------------------
-# Lottery opt-out flag (undecided — keep False until confirmed)
-# TODO: confirm opt-out lottery treatment with research team before deployment
+# Lottery opt-out flag (confirmed: True — opt-out treatment active)
+# Participants are entered by default with claim token; may opt out.
 # ---------------------------------------------------------------------------
-LOTTERY_OPT_OUT = False
+LOTTERY_OPT_OUT = True
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Where runtime state files live. On Render this MUST point at the
+# persistent disk (DATA_DIR=/var/data); the code folder is wiped on every
+# redeploy. Locally it defaults to the project folder.
+DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+
 # Separate SQLite for lottery contact data (never in oTree export)
-LOTTERY_DB_PATH = os.path.join(BASE_DIR, "lottery_contacts.sqlite3")
+LOTTERY_DB_PATH = os.path.join(DATA_DIR, "lottery_contacts.sqlite3")
 
-# Assignment state file (block-shuffle allocation)
-ASSIGNMENT_STATE_PATH = os.path.join(BASE_DIR, "assignment_state.json")
+# Assignment state file (completer-balanced allocation)
+ASSIGNMENT_STATE_PATH = os.path.join(DATA_DIR, "assignment_state.json")
 
 # ---------------------------------------------------------------------------
-# Pool sequence seed file (pre-generated per-condition outcomes)
+# Pool sequence file (per-condition outcome queues)
 # ---------------------------------------------------------------------------
-POOL_SEQ_PATH = os.path.join(BASE_DIR, "pool_sequences.json")
+POOL_SEQ_PATH = os.path.join(DATA_DIR, "pool_sequences.json")
 

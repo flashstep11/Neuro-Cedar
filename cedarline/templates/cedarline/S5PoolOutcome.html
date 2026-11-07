@@ -1,21 +1,10 @@
-{% extends "cedarline/_base.html" %}
-
+{% extends "cedarline/_invest_base.html" %}
+{# Round 1 outcome. The pool return applies to R1 only. #}
 
 {% block title %}Platform Update{% endblock %}
 
-{% block pre_content %}
-{% if is_manipulative %}
-  {% include "cedarline/_urgency_banner.html" %}
-{% endif %}
-{% endblock %}
-
 {% block content %}
-<div class="cl-progress__label">Investment Stage 5 of 8</div>
-<div class="cl-progress" role="progressbar" aria-valuenow="5" aria-valuemax="8">
-  {% for i in "1234" %}<div class="cl-progress__step cl-progress__step--done"></div>{% endfor %}
-  <div class="cl-progress__step cl-progress__step--active"></div>
-  {% for i in "678" %}<div class="cl-progress__step"></div>{% endfor %}
-</div>
+{% include "cedarline/_progress.html" %}
 
 {% if is_manipulative %}
   {% include "cedarline/_tier_card.html" %}
@@ -24,49 +13,45 @@
 
 <div class="cl-card cl-card--accent">
   <h2>Platform Update</h2>
-  <p>
-    {{ platform_name }} has applied the pool return to your reinvestment.
-  </p>
+  {% if reinvest_amount > 0 %}
+    <p>{{ platform_name }} has applied the pool return to your reinvestment.</p>
+  {% else %}
+    <p>You did not add money to the Growth Pool, so your platform balance is unchanged.</p>
+  {% endif %}
 </div>
 
 <div class="cl-balance-row">
   <div class="cl-balance-card">
     <div class="cl-balance-card__label">Cash Available</div>
     <div class="cl-balance-card__amount">Rs {{ cash_balance }}</div>
-    <div class="cl-balance-card__sub">Unchanged</div>
+    <div class="cl-balance-card__sub">After reinvestment</div>
   </div>
   <div class="cl-balance-card">
     <div class="cl-balance-card__label">Platform Balance</div>
-    <div class="cl-balance-card__amount cl-balance-card__amount--large">
-      Rs {{ platform_balance }}
-    </div>
+    <div class="cl-balance-card__amount cl-balance-card__amount--large"
+         data-countup="{{ platform_balance }}" data-from="{{ platform_before }}">Rs {{ platform_balance }}</div>
     <div class="cl-balance-card__sub">
-      {{ pool_return_str }} on reinvestment
+      {% if reinvest_amount > 0 %}{{ pool_return_str }} on reinvestment{% else %}On platform{% endif %}
     </div>
   </div>
 </div>
 
+{% if show_testimonials %}
+  {% include "cedarline/_testimonials.html" %}
+{% endif %}
+
 <div class="cl-card">
-  <p>
-    You reinvested <strong>Rs {{ reinvest_amount }}</strong>.
-    The platform applied
-    <strong>{{ pool_return_str }}</strong>
-    to that amount.
-  </p>
-  <p>
-    Your total platform balance is now
-    <strong>Rs {{ platform_balance }}</strong>.
-  </p>
-  <p>
-    You may now initiate a withdrawal of your funds.
-  </p>
+  {% if reinvest_amount > 0 %}
+    <p>
+      You reinvested <strong>Rs {{ reinvest_amount }}</strong>. The platform applied
+      <strong>{{ pool_return_str }}</strong> to that amount.
+    </p>
+  {% endif %}
+  <p>Your total platform balance is now <strong>Rs {{ platform_balance }}</strong>.</p>
+  <p>Next, you can choose whether to add more before withdrawing.</p>
 
   <form method="post" class="cl-mt-2">
-    
-    <button type="submit" class="cl-btn cl-btn--primary">
-      Withdraw My Funds →
-    </button>
+    <button type="submit" class="cl-btn cl-btn--primary">Continue →</button>
   </form>
 </div>
 {% endblock %}
-

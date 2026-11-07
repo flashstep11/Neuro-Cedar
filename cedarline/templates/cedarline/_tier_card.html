@@ -1,14 +1,29 @@
-<!-- --- Tier card: Silver → Gold progress. Same in both reward arms. --- -->
-<div class="cl-tier-card" role="complementary" aria-label="Your tier status">
-  <div class="cl-tier-card__badge" aria-hidden="true">🥈</div>
-  <div class="cl-tier-card__info">
-    <div class="cl-tier-card__name">Silver Tier</div>
-    <div class="cl-tier-card__sub">72% to Gold</div>
-    <div class="cl-tier-card__bar-wrap">
-      <div class="cl-tier-card__bar" role="progressbar"
-           aria-valuenow="72" aria-valuemin="0" aria-valuemax="100"
-           style="width:72%"></div>
+{# ==========================================================================
+   Salient status / progress display (manipulative arm only).
+   Fixed at 72% to Gold — identical in both reward arms and independent of R,
+   so it cannot leak reward assignment or respond to the decision.
+   ========================================================================== #}
+<div class="cl-tier-card" aria-hidden="true">
+  <div class="cl-tier-card__shine"></div>
+  <div class="cl-tier-card__top">
+    <div class="cl-tier-card__badge">&#129352;</div>
+    <div class="cl-tier-card__info">
+      <div class="cl-tier-card__eyebrow">Member status</div>
+      <div class="cl-tier-card__name">SILVER MEMBER</div>
+    </div>
+    <div class="cl-tier-card__next">
+      <div class="cl-tier-card__pct">72%</div>
+      <div class="cl-tier-card__to">to GOLD &#129351;</div>
     </div>
   </div>
+  <div class="cl-tier-card__bar-wrap">
+    <div class="cl-tier-card__bar" style="width:72%"></div>
+    <div class="cl-tier-card__goal">&#127942;</div>
+  </div>
+  <ul class="cl-tier-card__perks">
+    <li>&#128274; Gold badge</li>
+    <li>&#128274; Exclusive insights</li>
+    <li>&#128274; Priority support</li>
+  </ul>
+  <div class="cl-tier-card__nudge">You're ahead of 83% of investors &mdash; keep going to unlock Gold</div>
 </div>
-
