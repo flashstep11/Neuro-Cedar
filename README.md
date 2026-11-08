@@ -62,9 +62,11 @@ Neuro_economics/
 │       └── Debrief.html
 ├── _static/cedarline/cedarline.css  ← Design system CSS
 ├── config.py           ← Single config (F, pool, timer, etc.)
-├── assignment.py       ← Balanced block-shuffle assignment
-├── pool_sequence.py    ← Pre-generated pool outcome sequences
-├── lottery_db.py       ← Separate SQLite for contact data (not in oTree export)
+├── state_store.py      ← Database-backed state (Postgres, or local SQLite fallback)
+├── assignment.py       ← Completer-balanced assignment (state in the database)
+├── pool_sequence.py    ← Pre-generated pool outcome sequences (state in the database)
+├── lottery_db.py       ← Lottery contacts in their own table (not in oTree export)
+├── DEPLOY_FREE.md      ← Step-by-step free deployment (Postgres + Render free)
 ├── settings.py         ← oTree settings
 ├── requirements.txt
 ├── qa/
@@ -86,28 +88,29 @@ No arithmetic in templates or pages.
 ### Completer-Based Cell Balancing & Assignment
 Assignment balances across the 4 cells (Neutral 0%, Neutral 35%, Manipulative 0%, Manipulative 35%) based on **completers**:
 
-1. **State Tracking**: `assignment_state.json` tracks confirmed `completers` per cell and `in_flight` assignments with UTC timestamps, synchronized via an OS file-level lock (`msvcrt` on Windows, `fcntl` on POSIX).
+1. **State Tracking**: the `assignment` row in the `cl_state` table tracks confirmed `completers` per cell and `in_flight` assignments with UTC timestamps. Every update is one transaction with the row locked (`SELECT ... FOR UPDATE` on Postgres), so concurrent arrivals cannot overwrite each other and the state survives restarts and redeploys.
 2. **Allocation Algorithm (Dynamic Minimization)**:
    - When a participant reaches the assignment stage, expired in-flight entries (> 30 minutes old) are pruned.
    - For each cell, effective load is calculated as `effective = completers + active_in_flight`.
    - The cell with the lowest effective load is chosen. If tied, ties are broken via pre-generated pseudo-random block shuffle order.
    - The participant is registered as in-flight for that cell.
 3. **Completion & Abandonment Callbacks**:
-   - At the `Debrief` stage, `record_completion(participant_code)` promotes the in-flight reservation to a confirmed completer.
+   - At the `Debrief` stage, `record_completion(participant_code)` promotes the in-flight reservation to a confirmed completer (counted once per participant, however often the page is reloaded).
    - If a participant exits at `ContentWarning` or fails the quiz twice, `record_abandonment(participant_code)` frees the reservation immediately.
 4. **Tradeoffs**:
    - *Completer Balance vs Fixed Sequences*: Pure pre-randomized block shuffle ensures exact assignment balance at entry, but differential attrition (e.g., participants dropping out at S4 or S7) causes cell imbalances at analysis time. Completer-weighted dynamic minimization prioritizes equal N in final analyzed datasets.
    - *In-Flight Timeout Window (30 min)*: Balances slot availability against slow participants. 30 minutes accommodates slow reading while ensuring dropouts do not starve a cell.
-   - *Concurrency Scope*: OS file locking is atomic and crash-safe for single-process Uvicorn (standard oTree production). For horizontal scaling across multiple servers or worker processes, migrate state to a Redis atomic transaction or Postgres row lock.
+   - *Concurrency Scope*: row locking in the shared database is safe across processes and machines. `qa/test_state_store.py` checks that 200 simultaneous arrivals fill the four cells exactly evenly.
 
 ### Pool outcomes
-Pre-generated per-condition shuffled blocks in `pool_sequences.json`.
-Drawn once per participant **after R is submitted** (in S4's
-`before_next_page`), stored and never re-drawn on refresh.
+Pre-generated once per (cell x round), in balanced shuffled blocks, and stored in
+the database (`pool_sequences` row). Drawn once per participant **after each
+reinvestment is submitted** and only if that amount is above zero; the position and
+sequence version are stored on the participant. Never replenished, never recycled.
 
 ### Lottery contact data
-Stored in `lottery_contacts.sqlite3` (a separate file, **never** in
-oTree's `db.sqlite3`). Linked to participants only via a random UUID
+Stored in its own table, `lottery_entries`, which oTree never reads (set
+`LOTTERY_DATABASE_URL` to put it in a second database). Linked to participants only via a random UUID
 `claim_token` stored in `Player.claim_token`. Contact info never appears
 in any oTree data export.
 
@@ -134,30 +137,20 @@ with zero side effects.
 
 ### Database
 
-oTree uses `DATABASE_URL` for its own database. Use Postgres in production —
-ephemeral disk hosts (Heroku, Railway, Render) **wipe SQLite on redeploy**.
+Everything lives in Postgres: oTree's own data and the study state (assignment counts, pool
+sequence, lottery contacts). No disk is needed, so the free tier of a host that wipes its
+disk is fine. See **DEPLOY_FREE.md** for the step-by-step.
 
 ```
 DATABASE_URL=postgresql://user:password@host:5432/dbname
 ```
 
-The lottery contact database (`lottery_contacts.sqlite3`) is a **separate**
-SQLite file that is NOT managed by `DATABASE_URL`. It needs a **persistent
-volume** mounted at the project root. Configure your host to mount a
-persistent disk at this path.
+Without `DATABASE_URL` (local development) the app uses local SQLite files. On Render
+it refuses to start without one.
 
-### Single-worker requirement
+### Single-worker note
 
-Run with a **single Uvicorn worker** to keep the file-lock assignment
-strategy safe:
-
-```bash
-# Heroku Procfile
-web: otree production
-
-# Or with uvicorn directly
-uvicorn otree.asgi:application --workers 1 --host 0.0.0.0 --port $PORT
-```
+The app is safe with several workers (state uses row locks). A free Render service runs one anyway.
 
 ### Quick deploy checklist
 
@@ -168,8 +161,7 @@ export OTREE_AUTH_LEVEL=STUDY
 export DATABASE_URL=postgresql://...
 export OTREE_SECRET_KEY=<long-random-string>
 
-otree resetdb
-otree production
+otree prodserver 0.0.0.0:$PORT      # tables are created automatically on first start
 ```
 
 ---
@@ -219,10 +211,10 @@ Status of configuration and open deployment items:
 - [x] **Fee amount** — confirmed `F = 200` in `config.py`
 - [x] **Lottery opt-out flag** — confirmed `LOTTERY_OPT_OUT = True` in `config.py` (participants may optionally opt out on `LotteryContact.html`)
 - [x] **Classification label (Assumption A11)** — confirmed `"indifferent"` label for $P = F$ indifferent cases in `ledger.py`
-- [ ] **Growth pool** — `ACTIVE_POOL_KEY = "B_EV5"` is marked `PILOT, NOT FROZEN` in `config.py`. Freeze before final data collection
+- [ ] **Growth pool** — `ACTIVE_POOL_KEY = "C_EV15"` is marked `PILOT, NOT FROZEN` in `config.py`. Freeze before final data collection
 - [ ] **Production security keys** — set strong random `OTREE_SECRET_KEY` and `OTREE_ADMIN_PASSWORD` in the environment
 - [ ] **Production database** — configure Postgres `DATABASE_URL` for production deployment
-- [ ] **Persistent storage** — ensure `lottery_contacts.sqlite3` is mounted on a persistent disk (outside ephemeral container layers)
+- [ ] **Database backups** — free Postgres is not backed up: export the oTree CSV after every session
 
 ---
 

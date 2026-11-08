@@ -36,3 +36,7 @@ Thumbs.db
 
 # Archived runtime state from earlier design versions
 _archive/
+
+# Local-development state (SQLite fallback)
+cl_state.sqlite3*
+lottery_contacts.sqlite3*

@@ -14,41 +14,27 @@ Follows the implementation guide, section 3:
   * The file records its version; if config.POOL_SEQ_VERSION changes, the app
     refuses to mix sequences and raises PoolSequenceMismatch.
 
-File layout (JSON, kept on the persistent disk via DATA_DIR):
+Storage: one JSON document in the database (state_store, key "pool_sequences"),
+so it survives restarts and redeploys on any host. Layout:
   {"version", "pool_key", "created_utc", "block": [[num, den], ...],
    "queues": {"<cell>|r<round>": [[num, den], ...]},
    "next":   {"<cell>|r<round>": <next unused index>}}
 
-Concurrency: OS file lock around every read-modify-write (single server).
+Concurrency: every draw is one transaction with the document row locked
+(SELECT ... FOR UPDATE on Postgres), so two participants can never receive the
+same outcome position.
 """
 import json
 import math
-import os
 import random
-import sys
 from datetime import datetime, timezone
 from fractions import Fraction as Fr
 from functools import reduce
 
-from config import POOL_SEQ_PATH, ACTIVE_POOL, ACTIVE_POOL_KEY, POOL_SEQ_VERSION, POOL_SEQ_LENGTH
+import state_store
+from config import ACTIVE_POOL, ACTIVE_POOL_KEY, POOL_SEQ_VERSION, POOL_SEQ_LENGTH
 
-if sys.platform == "win32":
-    import msvcrt
-
-    def _lock(f):
-        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-
-    def _unlock(f):
-        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-else:
-    import fcntl
-
-    def _lock(f):
-        fcntl.flock(f, fcntl.LOCK_EX)
-
-    def _unlock(f):
-        fcntl.flock(f, fcntl.LOCK_UN)
-
+STATE_KEY = "pool_sequences"
 
 CELLS = ["neutral_0pct", "neutral_35pct", "manipulative_0pct", "manipulative_35pct"]
 ROUNDS = [1, 2]
@@ -96,36 +82,28 @@ def _generate():
     }
 
 
-def _load_or_create():
-    if os.path.exists(POOL_SEQ_PATH):
-        with open(POOL_SEQ_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        if data.get("version") != POOL_SEQ_VERSION or data.get("pool_key") != ACTIVE_POOL_KEY:
-            raise PoolSequenceMismatch(
-                f"{POOL_SEQ_PATH} holds version {data.get('version')!r} / pool {data.get('pool_key')!r}, "
-                f"config expects {POOL_SEQ_VERSION!r} / {ACTIVE_POOL_KEY!r}. Archive the old file "
-                "and start a new data collection (protocol change) rather than mixing sequences.")
-        return data, False
-    return _generate(), True
+def _check(data):
+    if data.get("version") != POOL_SEQ_VERSION or data.get("pool_key") != ACTIVE_POOL_KEY:
+        raise PoolSequenceMismatch(
+            f"The stored pool sequence is version {data.get('version')!r} / pool {data.get('pool_key')!r}, "
+            f"config expects {POOL_SEQ_VERSION!r} / {ACTIVE_POOL_KEY!r}. Use a fresh database (or archive "
+            "the old state) and start a new data collection (protocol change) rather than mixing sequences.")
 
 
-def _save(data):
-    tmp = POOL_SEQ_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-    os.replace(tmp, POOL_SEQ_PATH)          # atomic: never a half-written file
+def _load_locked(tx):
+    """Return the sequence document (row locked), generating it exactly once."""
+    data = tx.lock_get(STATE_KEY, None)
+    if data is None:
+        data = _generate()
+        tx.put(STATE_KEY, data)
+    else:
+        _check(data)
+    return data
 
 
 def ensure_generated():
-    """Create the sequence file now (call at startup, before recruitment)."""
-    with open(POOL_SEQ_PATH + ".lock", "w") as lf:
-        _lock(lf)
-        try:
-            data, created = _load_or_create()
-            if created:
-                _save(data)
-        finally:
-            _unlock(lf)
+    """Create the sequence now (call at startup, before recruitment). Idempotent."""
+    state_store.run(lambda tx: _load_locked(tx) and None)
 
 
 def draw_pool_return(condition_key: str, round_no: int):
@@ -135,27 +113,30 @@ def draw_pool_return(condition_key: str, round_no: int):
     never call this twice for the same participant and round.
     """
     key = f"{condition_key}|r{int(round_no)}"
-    with open(POOL_SEQ_PATH + ".lock", "w") as lf:
-        _lock(lf)
-        try:
-            data, _ = _load_or_create()
-            if key not in data["queues"]:
-                raise KeyError(f"unknown pool queue {key!r}")
-            i = data["next"][key]
-            if i >= len(data["queues"][key]):
-                raise PoolSequenceExhausted(f"pool sequence {key} used up ({i} outcomes)")
-            num, den = data["queues"][key][i]
-            data["next"][key] = i + 1
-            _save(data)
-        finally:
-            _unlock(lf)
-    return Fr(num, den), i, data["version"]
+
+    def txn(tx):
+        data = _load_locked(tx)
+        if key not in data["queues"]:
+            raise KeyError(f"unknown pool queue {key!r}")
+        i = data["next"][key]
+        if i >= len(data["queues"][key]):
+            raise PoolSequenceExhausted(f"pool sequence {key} used up ({i} outcomes)")
+        num, den = data["queues"][key][i]
+        data["next"][key] = i + 1
+        tx.put(STATE_KEY, data)
+        return num, den, i, data["version"]
+
+    num, den, i, version = state_store.run(txn)
+    return Fr(num, den), i, version
 
 
 def usage_summary():
     """{queue: (used, length)} for the admin report."""
-    if not os.path.exists(POOL_SEQ_PATH):
+    def txn(tx):
+        row = tx.execute("SELECT value FROM cl_state WHERE key = ?", (STATE_KEY,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    data = state_store.run(txn)
+    if not data:
         return {}
-    with open(POOL_SEQ_PATH, encoding="utf-8") as f:
-        data = json.load(f)
     return {k: (data["next"][k], len(v)) for k, v in data["queues"].items()}

@@ -93,15 +93,47 @@ ADMIN_PASSWORD = os.environ.get("OTREE_ADMIN_PASSWORD", "changeme_before_deploy"
 
 SECRET_KEY = os.environ.get("OTREE_SECRET_KEY", "dev-secret-key-change-in-production")
 
-# Refuse to start a production server with the placeholder credentials or
-# without persistent storage configured.
+# Refuse to start a production server with placeholder credentials, or on a
+# host that wipes its disk without a real database configured.
 if os.environ.get("OTREE_PRODUCTION") == "1":
-    _missing = [k for k in ("OTREE_ADMIN_PASSWORD", "OTREE_SECRET_KEY", "DATABASE_URL", "DATA_DIR")
-                if not os.environ.get(k)]
+    _missing = [k for k in ("OTREE_ADMIN_PASSWORD", "OTREE_SECRET_KEY") if not os.environ.get(k)]
     if _missing:
         raise RuntimeError(f"Production start blocked; set these env vars: {', '.join(_missing)}")
+    if os.environ.get("RENDER") and not os.environ.get("DATABASE_URL"):
+        raise RuntimeError("DATABASE_URL (a Postgres URL) is required on Render: its disk is wiped on "
+                           "every restart, so SQLite files would silently lose study data.")
 
-DEMO_PAGE_INTRO_HTML = ""
+# Free-tier Postgres hosts put idle databases to sleep (Neon after 5 minutes) and
+# drop every open connection. oTree keeps ONE long-lived connection, so without
+# this the first participant after a quiet period would get a server error.
+# Documented SQLAlchemy "pessimistic" recipe: ping on checkout, and on failure
+# discard the dead connection and reconnect transparently. Class-level, so it
+# applies to every engine in every oTree process regardless of import order.
+try:
+    from sqlalchemy import event as _sa_event, exc as _sa_exc
+    from sqlalchemy.pool import Pool as _SaPool
+
+    @_sa_event.listens_for(_SaPool, "checkout")
+    def _cl_ping_on_checkout(dbapi_con, con_record, con_proxy):
+        if not type(dbapi_con).__module__.startswith("psycopg2"):
+            return                                   # SQLite etc.: nothing to do
+        cur = dbapi_con.cursor()
+        try:
+            cur.execute("SELECT 1")
+        except dbapi_con.Error:
+            raise _sa_exc.DisconnectionError()       # pool reconnects and retries the checkout
+        finally:
+            try:
+                cur.close()
+            except Exception:
+                pass
+except ImportError:                                  # SQLAlchemy not installed yet (e.g. a bare import)
+    pass
+
+# Some hosts hand out postgres://; SQLAlchemy 2 only accepts postgresql://.
+_db_url = os.environ.get("DATABASE_URL", "")
+if _db_url.startswith("postgres://"):
+    os.environ["DATABASE_URL"] = "postgresql://" + _db_url.split("://", 1)[1]
 
 # Database: Postgres in production via DATABASE_URL env var; SQLite in dev.
 # oTree v5 picks this up automatically.

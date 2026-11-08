@@ -70,20 +70,7 @@ LOTTERY_OPT_OUT = True
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Where runtime state files live. On Render this MUST point at the
-# persistent disk (DATA_DIR=/var/data); the code folder is wiped on every
-# redeploy. Locally it defaults to the project folder.
+# Only used by the LOCAL development fallback (SQLite files). In production the
+# study state lives in Postgres (see state_store.py), so no disk is needed.
 DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
 os.makedirs(DATA_DIR, exist_ok=True)
-
-# Separate SQLite for lottery contact data (never in oTree export)
-LOTTERY_DB_PATH = os.path.join(DATA_DIR, "lottery_contacts.sqlite3")
-
-# Assignment state file (completer-balanced allocation)
-ASSIGNMENT_STATE_PATH = os.path.join(DATA_DIR, "assignment_state.json")
-
-# ---------------------------------------------------------------------------
-# Pool sequence file (per-condition outcome queues)
-# ---------------------------------------------------------------------------
-POOL_SEQ_PATH = os.path.join(DATA_DIR, "pool_sequences.json")
-

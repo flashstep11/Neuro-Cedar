@@ -28,9 +28,10 @@ How our Completer-Balanced algorithm works:
      in-flight reservation is released.
 
 Concurrency safety:
-  All state mutations are protected by an OS-level exclusive file lock
-  (msvcrt on Windows, fcntl on POSIX) around ASSIGNMENT_STATE_PATH.
-  This is thread-safe and process-safe for single-server deployments.
+  State lives in the database (state_store.py). Every read-modify-write is one
+  transaction with the state row locked (SELECT ... FOR UPDATE on Postgres,
+  BEGIN IMMEDIATE on SQLite), so concurrent arrivals cannot overwrite each other
+  and the state survives restarts, redeploys and ephemeral hosts.
 
 Tradeoffs:
   - Tradeoff 1 (Completer Parity vs. Differential Attrition Exposure):
@@ -45,31 +46,12 @@ Tradeoffs:
     resumes after 25 minutes, their slot is preserved. If they abandon, the slot
     re-opens after 30 minutes.
   - Tradeoff 3 (Multi-Server Deployment):
-    The OS file lock works across processes on a single host. If scaled across
-    multiple container instances/machines, replace the JSON lock with a Redis
-    counter or PostgreSQL row-level lock (e.g. SELECT FOR UPDATE).
+    Row locking in the shared database is safe across processes and machines.
 """
-import json
-import os
 import random
-import sys
 import time
 
-# Windows vs POSIX file locking
-if sys.platform == "win32":
-    import msvcrt
-    def _lock(f):
-        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-    def _unlock(f):
-        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-else:
-    import fcntl
-    def _lock(f):
-        fcntl.flock(f, fcntl.LOCK_EX)
-    def _unlock(f):
-        fcntl.flock(f, fcntl.LOCK_UN)
-
-from config import ASSIGNMENT_STATE_PATH
+import state_store
 
 CELLS = [
     ("neutral",       "0pct"),
@@ -80,7 +62,9 @@ CELLS = [
 
 CELL_KEYS = [f"{ui}_{rew}" for ui, rew in CELLS]
 
-# Single-sitting study takes 3-5 minutes; 30 minutes timeout for in-flight abandonment
+STATE_KEY = "assignment"
+
+# Single-sitting study takes ~10 minutes; 30 minutes timeout for in-flight abandonment
 IN_FLIGHT_TIMEOUT_SECS = 1800
 
 
@@ -91,27 +75,17 @@ def _default_state():
     }
 
 
-def _load_state(path):
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # Ensure all keys exist
-                if "completers" not in data:
-                    data["completers"] = {k: 0 for k in CELL_KEYS}
-                for k in CELL_KEYS:
-                    data["completers"].setdefault(k, 0)
-                if "in_flight" not in data:
-                    data["in_flight"] = {}
-                return data
-        except Exception:
-            return _default_state()
-    return _default_state()
+def _normalize(state):
+    """Make sure every expected key exists (never replaces a corrupt state silently)."""
+    state.setdefault("completers", {})
+    for k in CELL_KEYS:
+        state["completers"].setdefault(k, 0)
+    state.setdefault("in_flight", {})
+    return state
 
 
-def _save_state(path, state):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
+def _load_locked(tx):
+    return _normalize(tx.lock_get(STATE_KEY, _default_state()))
 
 
 def _prune_expired_in_flight(state, now):
@@ -125,131 +99,105 @@ def _prune_expired_in_flight(state, now):
         del in_flight[code]
 
 
+def _active_counts(state):
+    counts = {k: 0 for k in CELL_KEYS}
+    for info in state.get("in_flight", {}).values():
+        cell = tuple(info.get("cell", []))
+        if len(cell) == 2:
+            k = f"{cell[0]}_{cell[1]}"
+            counts[k] = counts.get(k, 0) + 1
+    return counts
+
+
 def assign_participant(participant_code: str = None) -> tuple:
     """
     Assign participant to the cell with the minimum effective load:
       effective = completers + active_in_flight
     Ties broken uniformly at random.
-    Returns (ui_condition, reward_condition).
+    Returns (ui_condition, reward_condition). Idempotent per participant code.
     """
-    lock_path = ASSIGNMENT_STATE_PATH + ".lock"
     now = time.time()
 
-    with open(lock_path, "w") as lf:
-        _lock(lf)
-        try:
-            state = _load_state(ASSIGNMENT_STATE_PATH)
-            _prune_expired_in_flight(state, now)
+    def txn(tx):
+        state = _load_locked(tx)
+        _prune_expired_in_flight(state, now)
 
-            # If participant already has an in-flight assignment, return it (idempotent)
-            if participant_code and participant_code in state.get("in_flight", {}):
-                stored_cell = state["in_flight"][participant_code]["cell"]
-                return tuple(stored_cell)
+        # Already has an in-flight assignment -> return it (idempotent)
+        if participant_code and participant_code in state["in_flight"]:
+            tx.put(STATE_KEY, state)
+            return tuple(state["in_flight"][participant_code]["cell"])
 
-            # Count active in-flight per cell
-            active_counts = {k: 0 for k in CELL_KEYS}
-            for info in state.get("in_flight", {}).values():
-                cell_tuple = tuple(info.get("cell", []))
-                if len(cell_tuple) == 2:
-                    k = f"{cell_tuple[0]}_{cell_tuple[1]}"
-                    active_counts[k] = active_counts.get(k, 0) + 1
+        active = _active_counts(state)
+        completers = state["completers"]
+        effective = {k: completers.get(k, 0) + active.get(k, 0) for k in CELL_KEYS}
 
-            # Effective count = completed + in_flight
-            completers = state.get("completers", {})
-            effective_counts = {
-                k: completers.get(k, 0) + active_counts.get(k, 0)
-                for k in CELL_KEYS
-            }
+        min_count = min(effective.values())
+        chosen_key = random.choice([k for k, v in effective.items() if v == min_count])
+        ui, rew = chosen_key.split("_", 1)
 
-            # Find cell(s) with minimum effective count
-            min_count = min(effective_counts.values())
-            candidate_keys = [k for k, v in effective_counts.items() if v == min_count]
+        if participant_code:
+            state["in_flight"][participant_code] = {"cell": [ui, rew], "assigned_at": now}
+        tx.put(STATE_KEY, state)
+        return (ui, rew)
 
-            # Break ties uniformly at random
-            chosen_key = random.choice(candidate_keys)
-            ui, rew = chosen_key.split("_", 1)
-            chosen_cell = (ui, rew)
-
-            # Record in-flight
-            if participant_code:
-                state["in_flight"][participant_code] = {
-                    "cell": [ui, rew],
-                    "assigned_at": now,
-                }
-
-            _save_state(ASSIGNMENT_STATE_PATH, state)
-        finally:
-            _unlock(lf)
-
-    return chosen_cell
+    return state_store.run(txn)
 
 
 def record_completion(participant_code: str, ui_condition: str, reward_condition: str):
     """
     Record that a participant successfully completed the study.
     Increments completers count and releases their in-flight reservation.
+    Idempotent per participant: a participant is only counted once.
     """
-    lock_path = ASSIGNMENT_STATE_PATH + ".lock"
     cell_key = f"{ui_condition}_{reward_condition}"
     if cell_key not in CELL_KEYS:
         return
 
-    with open(lock_path, "w") as lf:
-        _lock(lf)
-        try:
-            state = _load_state(ASSIGNMENT_STATE_PATH)
-            state["completers"][cell_key] = state["completers"].get(cell_key, 0) + 1
-            if participant_code and participant_code in state.get("in_flight", {}):
-                del state["in_flight"][participant_code]
-            _save_state(ASSIGNMENT_STATE_PATH, state)
-        finally:
-            _unlock(lf)
+    def txn(tx):
+        state = _load_locked(tx)
+        counted = state.setdefault("counted", [])
+        if participant_code and participant_code in counted:
+            return                                  # refresh of the debrief page
+        state["completers"][cell_key] = state["completers"].get(cell_key, 0) + 1
+        if participant_code:
+            counted.append(participant_code)
+            state["in_flight"].pop(participant_code, None)
+        tx.put(STATE_KEY, state)
+
+    state_store.run(txn)
 
 
 def record_abandonment(participant_code: str):
-    """
-    Explicitly release in-flight slot if participant exits early (e.g. content warning, quiz fail).
-    """
+    """Release the in-flight slot if a participant exits early (content warning, quiz fail)."""
     if not participant_code:
         return
-    lock_path = ASSIGNMENT_STATE_PATH + ".lock"
-    with open(lock_path, "w") as lf:
-        _lock(lf)
-        try:
-            state = _load_state(ASSIGNMENT_STATE_PATH)
-            if participant_code in state.get("in_flight", {}):
-                del state["in_flight"][participant_code]
-                _save_state(ASSIGNMENT_STATE_PATH, state)
-        finally:
-            _unlock(lf)
+
+    def txn(tx):
+        state = _load_locked(tx)
+        if participant_code in state["in_flight"]:
+            del state["in_flight"][participant_code]
+            tx.put(STATE_KEY, state)
+
+    state_store.run(txn)
 
 
 def get_assignment_summary() -> dict:
     """Return snapshot of completers and in-flight counts for reporting."""
-    lock_path = ASSIGNMENT_STATE_PATH + ".lock"
     now = time.time()
-    with open(lock_path, "w") as lf:
-        _lock(lf)
-        try:
-            state = _load_state(ASSIGNMENT_STATE_PATH)
-            _prune_expired_in_flight(state, now)
-            completers = dict(state.get("completers", {}))
-            in_flight = dict(state.get("in_flight", {}))
-            _save_state(ASSIGNMENT_STATE_PATH, state)
-        finally:
-            _unlock(lf)
 
-    active_counts = {k: 0 for k in CELL_KEYS}
-    for info in in_flight.values():
-        c = tuple(info.get("cell", []))
-        if len(c) == 2:
-            k = f"{c[0]}_{c[1]}"
-            active_counts[k] = active_counts.get(k, 0) + 1
+    def txn(tx):
+        state = _load_locked(tx)
+        _prune_expired_in_flight(state, now)
+        tx.put(STATE_KEY, state)
+        return state
 
+    state = state_store.run(txn)
+    completers = dict(state["completers"])
+    active = _active_counts(state)
     return {
         "completers": completers,
-        "active_in_flight": active_counts,
-        "effective": {k: completers.get(k, 0) + active_counts.get(k, 0) for k in CELL_KEYS},
+        "active_in_flight": active,
+        "effective": {k: completers.get(k, 0) + active.get(k, 0) for k in CELL_KEYS},
         "total_completed": sum(completers.values()),
-        "total_in_flight": len(in_flight),
+        "total_in_flight": len(state["in_flight"]),
     }
