@@ -12,7 +12,7 @@
     <span class="cl-ticker__title">Platform activity</span>
   </div>
   <div class="cl-ticker__counter">
-    <span class="cl-ticker__big" data-cl-live-count>1,284</span>
+    <span class="cl-ticker__big" data-cl-live-count>212</span>
     <span class="cl-ticker__label">investors active now</span>
   </div>
   <div class="cl-ticker__sub">&#9650; 37 joined in the last hour &middot; 9 of 10 members reinvest</div>
@@ -44,7 +44,7 @@
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var idx = Math.floor(Math.random() * PEOPLE.length);
-  var counter = 1284;
+  var counter = 212;
 
   function initials(name) {
     return name.split(' ').map(function(p) { return p[0]; }).join('').slice(0, 2);
@@ -78,7 +78,7 @@
       msg.classList.add('cl-ticker__msg--in');
     }
     counter += Math.floor(Math.random() * 5) - 1;          // gentle upward drift
-    counter = Math.max(1250, Math.min(1340, counter));
+    counter = Math.max(188, Math.min(241, counter));
     document.querySelectorAll('[data-cl-live-count]').forEach(function(el) {
       el.textContent = counter.toLocaleString('en-IN');
     });
